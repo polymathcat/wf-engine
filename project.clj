@@ -4,8 +4,14 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.5.1"]
-                  [lacij "0.8.1"]]
+                 [lacij "0.8.1"]]
   :main ^:skip-aot wf-engine.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})
+
+
+
+
+
+
 
