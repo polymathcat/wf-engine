@@ -94,9 +94,20 @@
 
 ;;;;DATABASES
 
+;schema?
+
+;incomplete
+(defn schema-subset? [s1 s2]
+  true)
+
+(defn schema-append [s1 s2]
+  [])
+
+
 ;;;;ONTOLOGY
 
 ;ONLY IDs should be exposed to the outside world
+;hmm... question mark expects everything, other functions assume is okay?.
 
 ;private
 
@@ -159,47 +170,65 @@
 ;;;;DESIGN PROCOTOLS
 
 (defn design-operator? [p]
-  ;(and (vector? p)
-       ;(= (first x) 'protocol-design))
-  false
-  )
+  (and (vector? p)
+       (or (= (first p) :design-operator-sequential)
+           (= (first p) :design-operator-parallel))))
 
 (defn design-task? [p]
-  false
-  )
+  (and (vector? p)
+       (= (first p) :design-task)))
 
 (defn protocol-design? [p]
-  (or (design-operator? p) (design-task? p)))
+  (or (design-operator? p)
+      (design-task? p)))
 
 
 (defn design-make-task [id ontology]
   (if (ontology-node-data-centric? id ontology)
     ;(vector 'design-task (ontology-node-name id ontology))
-    (vector 'design-task id)
+    (vector :design-task id)
     (throw (Exception. "Ontological node is not valid for a design protocol task"))))
 
+(defn design-make-sequential [p1 p2]
+  (if (and (protocol-design? p1)
+           (protocol-design? p2)
+           (schema-subset? (design-output p1) (design-output p2)))
+    (vector :design-operator-sequential p1 p2)
+    (throw (Exception. "Cannot build sequential operation."))))
+
+(defn design-make-parallel [p1 p2]
+  (if (and (protocol-design? p1)
+           (protocol-design? p2))
+    (vector :design-operator-parallel p1 p2)
+    (throw (Exception. "Cannot build parallel operation."))))
+
+
+;incomplete
+(defn design-input [p]
+  [])
+
+
+;schema-append
+
+;incomplete
+(defn design-output [p]
+[])
+
+
+(design-make-task :delta-delta-g-prediction sprouts-ontology)
+
+
 (design-make-task :interaction-prediction sprouts-ontology)
+(design-make-task :fragment-prediction sprouts-ontology)
+
+(design-make-parallel (design-make-task :interaction-prediction sprouts-ontology)
+                      (design-make-task :fragment-prediction sprouts-ontology))
 
 
 ;stub needed by the main project
 (defn -main
   []
   (println "Hello, World!"))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
