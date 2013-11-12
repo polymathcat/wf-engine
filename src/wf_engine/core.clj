@@ -3,14 +3,16 @@
   (:use
 
        lacij.model.graph
+       lacij.edit.graph
        lacij.edit.dynamic      ;not sure if is right
        lacij.view.graphview
        lacij.layouts.layout
        (tikkba swing dom core)
        tikkba.utils.xml)
 
-  (:import (javax.swing JFrame JButton BoxLayout SwingUtilities)
+  (:import (javax.swing JFrame JPanel JButton BoxLayout SwingUtilities)
            (java.awt.event ActionListener)
+           (java.awt BorderLayout Color)
            java.awt.Component))
 
 ;next three are from https://github.com/pallix/lacij/tree/master/src/lacij/layouts
@@ -255,11 +257,11 @@
 
 
 ;; copied from swing utils
-(defn add-action-listener
+(defn add-action-listener [component f & args]
   "Adds an ActionLister to component. When the action fires, f will be
 invoked with the event as its first argument followed by args.
 Returns the listener."
-  [component f & args]
+
   (let [listener (proxy [ActionListener] []
                    (actionPerformed [event] (apply f event args)))]
     (.addActionListener component listener)
@@ -272,8 +274,7 @@ Returns the listener."
        (add-node! :appolon "Appolon" :x 50 :y 350)
        (add-edge! :appolon-athena :appolon :athena))))
 
-(defn gen-graph
-  []
+(defn gen-graph []
   (-> (graph)
       (add-node :athena "Athena" :x 10 :y 30)
       (add-node :zeus "Zeus" :x 200 :y 150)
@@ -286,30 +287,55 @@ Returns the listener."
       (add-edge :son-zeus-hera :ares :matrimony)
       (build)))
 
-(defn create-frame
-  [svgcanvas g]
-  (let [frame (JFrame.)
-        button (JButton. "Action")
-        pane (.getContentPane frame)]
-    (add-action-listener button on-action svgcanvas g)
-    (.setLayout pane (BoxLayout. pane BoxLayout/Y_AXIS))
-    (.setAlignmentX button Component/CENTER_ALIGNMENT)
-    (.add pane button)
-    (.add pane svgcanvas)
-    (.setSize frame 800 600)
-    (.setSize svgcanvas 800 600)
+(defn create-frame [svgcanvas active-graph]
+  (let [frame  (JFrame.)
+
+        panel-ontology (JPanel.)
+        panel-protocol (JPanel.)
+
+        button (JButton. "Actionzzz")
+        pane   (.getContentPane frame)]
+
+    ;set up main JFrame
+    (.setLayout pane nil)
+    (.setSize frame (+ 1280 16) (+ 720 38))
+    (add-action-listener button on-action svgcanvas active-graph)
+
+
+    ;set up the ontology panel
+    (.setLocation panel-ontology 0 0)
+    (.setSize panel-ontology 640 720)
+    (.setBackground panel-ontology Color/BLACK)
+    (.add panel-ontology button)
+    (.add pane panel-ontology)
+
+    ;set up the protocol panel
+    (.setLocation panel-protocol 640 0)
+    (.setSize panel-protocol 640 720)
+    (.setLayout panel-protocol nil)
+    (.setBackground panel-protocol Color/BLUE)
+    (.add panel-protocol svgcanvas)
+      (.setSize svgcanvas 640 600)
+      (.setLocation svgcanvas 0 0)
+    (.add pane panel-protocol)
+
     frame))
 
 (defn zz []
-  (let [g (gen-graph)
-        doc (:xmldoc g)
-        _ (export g "dynamic1.svg")
-        svgcanvas (:svgcanvas g)
-        frame (create-frame svgcanvas g)]
+  (let [active-graph  (second sprouts-ontology)
+        ;doc           (:xmldoc active-graph)
+        svgcanvas     (:svgcanvas active-graph)
+        frame         (create-frame svgcanvas active-graph)]
     (SwingUtilities/invokeAndWait
      (fn [] (.setVisible frame true)))))
 
-;(zz)
+(zz)
+
+
+
+
+
+
 
 
 
