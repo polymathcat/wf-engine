@@ -1,7 +1,7 @@
 (ns wf-engine.core
   (:gen-class)
   (:use
-
+       wf-engine.database
        lacij.model.graph
        lacij.edit.graph
        lacij.edit.dynamic      ;not sure if is right
@@ -96,18 +96,6 @@
 (:id (first (:nodes (second sprouts-ontology))))
 (first (first (:nodes (second sprouts-ontology))))
  (:text (first (:labels (:view (second (first (:nodes (second sprouts-ontology))))))))
-
-;;;;DATABASES
-
-;schema?
-
-;incomplete
-(defn schema-subset? [s1 s2]
-  true)
-
-(defn schema-append [s1 s2]
-  [])
-
 
 ;;;;ONTOLOGY
 
@@ -330,6 +318,8 @@ Returns the listener."
      (fn [] (.setVisible frame true)))))
 
 (zz)
+
+
 
 
 
