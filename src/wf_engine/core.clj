@@ -158,8 +158,9 @@
 
 ;;;
 
-(defrecord BlockPrimative [schema-input
-                  schema-output])
+(defrecord BlockPrimative [title
+                           schema-input
+                           schema-output])
 
 
 ;(defrecord BlockOperator [schema-input
@@ -188,6 +189,7 @@
 (defn execution-make-protocol-mapclone [blocks]
   {:layer :execution, :type :block-mapclone, :blocks blocks})
 
+;above need to check if the composition is sound.
 
 
 (defn execution-get-schema-input [execution-protocol]
@@ -205,20 +207,29 @@
 
 
 (execution-get-schema-input
-  (execution-make-protocol-primative (BlockPrimative. (schema-make {"job_filepath" :string})
+  (execution-make-protocol-primative (BlockPrimative. "Job Parser"
+                                                      (schema-make {"job_filepath" :string})
                                                       (schema-make {"pdb_id" :string})))
 )
 
 (execution-get-schema-input
-  (execution-make-protocol-fold [(execution-make-protocol-primative (BlockPrimative. (schema-make {"job_filepath" :string})
+  (execution-make-protocol-fold [(execution-make-protocol-primative (BlockPrimative. "Job Parser"
+                                                                                     (schema-make {"job_filepath" :string})
                                                                                      (schema-make {"pdb_id" :string})))
 
-                                 (execution-make-protocol-mapclone [(execution-make-protocol-primative (BlockPrimative. (schema-make {"pdb_id" :string})
+                                 (execution-make-protocol-mapclone [(execution-make-protocol-primative (BlockPrimative. "Fetch FASTA"
+                                                                                                                        (schema-make {"pdb_id" :string})
                                                                                                                         (schema-make {"fasta_filepath" :string})))
-                                                                    (execution-make-protocol-primative (BlockPrimative. (schema-make {"pdb_id" :string})
+                                                                    (execution-make-protocol-primative (BlockPrimative. "Fetch PDB"
+                                                                                                                        (schema-make {"pdb_id" :string})
                                                                                                                         (schema-make {"pdb_filepath" :string})))
-                                                                    (execution-make-protocol-primative (BlockPrimative. (schema-make {"pdb_id" :string})
+                                                                    (execution-make-protocol-primative (BlockPrimative. "Fetch DSSP"
+                                                                                                                        (schema-make {"pdb_id" :string})
                                                                                                                         (schema-make {"dssp_filepath" :string})))])
+
+                                 (execution-make-protocol-primative (BlockPrimative. "Job Parser"
+                                                                                     (schema-make {"pdb_id" :string})
+                                                                                     (schema-make {"protein_id" :string, "fasta_filepath" :string, "pdb_filepath" :string, "dssp_filepath" :string})))
  ])
 
 )
