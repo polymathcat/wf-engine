@@ -139,7 +139,7 @@
   [])
 
 
-;schema-append
+
 
 ;incomplete
 (defn design-output [p]
@@ -156,31 +156,80 @@
                       (design-make-task :fragment-prediction sprouts-ontology))
 
 
+;;;
+
+(defrecord BlockPrimative [schema-input
+                  schema-output])
+
+
+;(defrecord BlockOperator [schema-input
+;                  schema-output])
+
+
+(defn execution-block-primative? [block]
+                            (and (map? block)
+                                 (= (:type block) :block-primative)))
+
+(defn execution-block-fold? [block]
+                            (and (map? block)
+                                 (= (:type block) :block-fold)))
+
+(defn execution-block-mapclone? [block]
+                            (and (map? block)
+                                 (= (:type block) :block-mapclone)))
+
+
+(defn execution-make-protocol-primative [block]
+  {:layer :execution, :type :block-primative, :block block})
+
+(defn execution-make-protocol-fold [blocks]
+  {:layer :execution, :type :block-fold, :blocks blocks})
+
+(defn execution-make-protocol-mapclone [blocks]
+  {:layer :execution, :type :block-mapclone, :blocks blocks})
+
+
+
+(defn execution-get-schema-input [execution-protocol]
+  (cond (execution-block-primative? execution-protocol)
+          (.schema-input (:block execution-protocol))
+
+        (execution-block-fold? execution-protocol)
+          (execution-get-schema-input (first (:blocks execution-protocol)))
+
+        (execution-block-mapclone? execution-protocol)
+          (execution-get-schema-input (first (:blocks execution-protocol)))
+
+        :else
+          (str "unknown block type")))
+
+
+(execution-get-schema-input
+  (execution-make-protocol-primative (BlockPrimative. (schema-make {"job_filepath" :string})
+                                                      (schema-make {"pdb_id" :string})))
+)
+
+(execution-get-schema-input
+  (execution-make-protocol-fold [(execution-make-protocol-primative (BlockPrimative. (schema-make {"job_filepath" :string})
+                                                                                     (schema-make {"pdb_id" :string})))
+
+                                 (execution-make-protocol-mapclone [(execution-make-protocol-primative (BlockPrimative. (schema-make {"pdb_id" :string})
+                                                                                                                        (schema-make {"fasta_filepath" :string})))
+                                                                    (execution-make-protocol-primative (BlockPrimative. (schema-make {"pdb_id" :string})
+                                                                                                                        (schema-make {"pdb_filepath" :string})))
+                                                                    (execution-make-protocol-primative (BlockPrimative. (schema-make {"pdb_id" :string})
+                                                                                                                        (schema-make {"dssp_filepath" :string})))])
+ ])
+
+)
+
+;to find node in GUI, just path from root to the selected one.
+
+
 ;stub needed by the main project
 (defn -main
   []
   (println "Hello, World!"))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ;; copied from swing utils
 (defn add-action-listener [component f & args]
@@ -255,7 +304,7 @@ Returns the listener."
     (SwingUtilities/invokeAndWait
      (fn [] (.setVisible frame true)))))
 
-(zz)
+;(zz)
 
 
 
