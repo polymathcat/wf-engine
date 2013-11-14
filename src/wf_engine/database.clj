@@ -1,5 +1,7 @@
 ;;; Copyright ©2013 Ruben Acuna
 
+;replace with lobos?
+
 ;;; namespace and externals
 
 (ns wf-engine.database
@@ -35,14 +37,18 @@
   {:type   :schema,
    :schema columns})
 
-
 (defn schema-join [s1 s2]
   "Returns a schema consisting of s1 and s2 combined. "
 
-  (if (not (schema-eq? s1 s2))
-      (throw (Exception. "Unimplemented: schemas must be identical to be joined."))
-      {:type   :schema,
-       :schema (conj (:schema s1) (:schema s2))}))
+  (if (empty? (:schema s2))
+    s1
+    (let [active-col (first (:schema s2))]
+      (if (and (contains? (:schema s1) (first active-col))
+               (not (= ((first active-col) (:schema s1)) (second active-col))))
+          (throw (Exception. "Found columns with same name but different types."))
+          (schema-join
+            (schema-make (assoc (:schema s1) (first active-col) (second active-col)))
+            (schema-make (dissoc (:schema s2) (first active-col))))))))
 
 ;;; tests
 ;(schema? 1)
@@ -80,6 +86,8 @@
                 (schema-make {:name :unknown, :format :fasta}))
 (schema-join (schema-make {:name :sequence, :format :fasta})
                 (schema-make {:name :sequence}))
+
+
 
 
 
