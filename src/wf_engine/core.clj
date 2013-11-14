@@ -147,8 +147,6 @@
 
 
 ;(design-make-task :delta-delta-g-prediction sprouts-ontology)
-
-
 (design-make-task :interaction-prediction sprouts-ontology)
 (design-make-task :fragment-prediction sprouts-ontology)
 
@@ -179,19 +177,6 @@
                             (and (map? block)
                                  (= (:type block) :block-mapclone)))
 
-
-(defn execution-make-protocol-primative [block]
-  {:layer :execution, :type :block-primative, :block block})
-
-(defn execution-make-protocol-fold [blocks]
-  {:layer :execution, :type :block-fold, :blocks blocks})
-
-(defn execution-make-protocol-mapclone [blocks]
-  {:layer :execution, :type :block-mapclone, :blocks blocks})
-
-;above need to check if the composition is sound.
-
-
 (defn execution-get-schema-input [execution-protocol]
   (cond (execution-block-primative? execution-protocol)
           (.schema-input (:block execution-protocol))
@@ -200,19 +185,71 @@
           (execution-get-schema-input (first (:blocks execution-protocol)))
 
         (execution-block-mapclone? execution-protocol)
-          (execution-get-schema-input (first (:blocks execution-protocol)))
+          (reduce schema-join
+                  (map execution-get-schema-input (:blocks execution-protocol)))
+        :else
+          (str "unknown block type")))
+
+(defn execution-get-schema-output [execution-protocol]
+  (cond (execution-block-primative? execution-protocol)
+          (.schema-output (:block execution-protocol))
+
+        (execution-block-fold? execution-protocol)
+          (execution-get-schema-output (last (:blocks execution-protocol)))
+
+        (execution-block-mapclone? execution-protocol)
+          (reduce schema-join
+                  (conj (map execution-get-schema-output (:blocks execution-protocol))
+                        (execution-get-schema-input execution-protocol)))
 
         :else
           (str "unknown block type")))
 
 
-(execution-get-schema-input
-  (execution-make-protocol-primative (BlockPrimative. "Job Parser"
-                                                      (schema-make {"job_filepath" :string})
-                                                      (schema-make {"pdb_id" :string})))
+;;CONSTRUCTORS
+(defn execution-make-protocol-primative [block]
+  ;will always produce a sound protocol
+  {:layer :execution, :type :block-primative, :block block})
+
+
+;(map vector '(1 2 3 4) '(2 3 4))
+
+(defn execution-make-protocol-fold [blocks]
+   (if (or (= 1 (count blocks))
+           (let [
+                 input-schemas (map execution-get-schema-input blocks)
+
+                 output-schemas (map execution-get-schema-output blocks)
+
+                 schema-pairs (map vector output-schemas (rest input-schemas))]
+                (every? #(schema-subset? (first %)
+                                         (second %))
+                        schema-pairs)))
+       {:layer :execution, :type :block-fold, :blocks blocks}
+       (throw (Exception. "Cannot build fold protocol from given blocks."))))
+
+(defn execution-make-protocol-mapclone [blocks]
+  ;will always produce a sound protocol
+    {:layer :execution, :type :block-mapclone, :blocks blocks})
+
+
+(execution-get-schema-output
+;  (execution-make-protocol-primative (BlockPrimative. "Job Parser"
+;                                                      (schema-make {"job_filepath" :string})
+;                                                      (schema-make {"pdb_id" :string})))
+
+                                 (execution-make-protocol-mapclone [(execution-make-protocol-primative (BlockPrimative. "Fetch FASTA"
+                                                                                                                        (schema-make {"pdb_id" :string})
+                                                                                                                        (schema-make {"fasta_filepath" :string})))
+                                                                    (execution-make-protocol-primative (BlockPrimative. "Fetch PDB"
+                                                                                                                        (schema-make {"pdb_id" :string})
+                                                                                                                        (schema-make {"pdb_filepath" :string})))
+                                                                    (execution-make-protocol-primative (BlockPrimative. "Fetch DSSP"
+                                                                                                                        (schema-make {"pdb_id" :string})
+                                                                                                                        (schema-make {"dssp_filepath" :string})))])
 )
 
-(execution-get-schema-input
+(defn build-sprouts-execution []
   (execution-make-protocol-fold [(execution-make-protocol-primative (BlockPrimative. "Job Parser"
                                                                                      (schema-make {"job_filepath" :string})
                                                                                      (schema-make {"pdb_id" :string})))
@@ -227,12 +264,16 @@
                                                                                                                         (schema-make {"pdb_id" :string})
                                                                                                                         (schema-make {"dssp_filepath" :string})))])
 
-                                 (execution-make-protocol-primative (BlockPrimative. "Job Parser"
+                                 (execution-make-protocol-primative (BlockPrimative. "Entry IDer"
                                                                                      (schema-make {"pdb_id" :string})
                                                                                      (schema-make {"protein_id" :string, "fasta_filepath" :string, "pdb_filepath" :string, "dssp_filepath" :string})))
  ])
 
 )
+
+(execution-get-schema-input (build-sprouts-execution))
+
+(execution-get-schema-input (build-sprouts-execution))
 
 ;to find node in GUI, just path from root to the selected one.
 
@@ -316,6 +357,10 @@ Returns the listener."
      (fn [] (.setVisible frame true)))))
 
 ;(zz)
+
+
+
+
 
 
 
