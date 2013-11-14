@@ -215,6 +215,7 @@
 ;(map vector '(1 2 3 4) '(2 3 4))
 
 (defn execution-make-protocol-fold [blocks]
+  ;check if an execution of the blocks in the fold would be sound.
    (if (or (= 1 (count blocks))
            (let [
                  input-schemas (map execution-get-schema-input blocks)
