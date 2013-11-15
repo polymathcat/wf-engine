@@ -239,7 +239,7 @@
 (execution-get-schema-output (build-sprouts-execution))
 
 ;top down - split based
-(defn execution-split-protocol-to-fold [protocol id title block1 block2]
+(defn execution-split-protocol-to-fold [protocol block1 block2]
   (if (and (schema-subset? (execution-get-schema-input block1)
                            (execution-get-schema-input protocol))
            (schema-subset? (execution-get-schema-input block2)
@@ -247,20 +247,43 @@
            (schema-subset? (execution-get-schema-output protocol)
                            (execution-get-schema-output block2)))
 
-    (execution-make-protocol-fold id title [block1 block2])
-    (throw (Exception. "Cannot split block into fold operator from given blocks."))))
+      (execution-make-protocol-fold (.ID (.Contents protocol)) (.Title (.Contents protocol)) [block1 block2])
+      (throw (Exception. "Cannot split block into fold operator from given blocks."))))
 
-;(defn execution-replace-procotol protocol id replacement
+(defn execution-replace-procotol [protocol id replacement]
 
-;  (if (execution-block-primative? protocol)
-;      (if (= (.ID protocol) id)
-;           replacement
-;           protocol)
+  (cond (execution-block-primative? protocol)
+          (if (= (.ID (.Contents protocol)) id)
+              replacement
+              protocol)
 
-;      ;otherwise it is an operator
-;      (if (= (.ID protocol) id)
-;                 replacement
-;                (execution-make-protocol-fold (map execution-replace-procotol (:blocks protocol))))))
+        (execution-block-fold? protocol)
+          (if (= (.ID (.Contents protocol)) id)
+              replacement
+              (execution-make-protocol-fold (.ID (.Contents protocol))
+                                            (.Title (.Contents protocol))
+                                            (map #(execution-replace-procotol % id replacement)
+                                                  (.Blocks (.Contents protocol)))))
+
+        (execution-block-mapclone? protocol)
+          (if (= (.ID (.Contents protocol)) id)
+              replacement
+              (execution-make-protocol-mapclone (.ID (.Contents protocol))
+                                            (.Title (.Contents protocol))
+                                            (map #(execution-replace-procotol % id replacement)
+                                                  (.Blocks (.Contents protocol)))))
+        :else
+          (throw (Exception. "execution-replace-procotol: encountered unknown protocol."))))
+
+(defn execution-contains-id? [protocol id]
+
+  (or (and (execution-block-primative? protocol)
+           (= (.ID (.Contents protocol)) id))
+
+      (and (or (execution-block-fold? protocol))
+               (execution-block-mapclone? protocol))
+            (some execution-contains-id? (.Blocks (.Contents protocol)))))
+
 
 
 ;testing - top down
