@@ -223,8 +223,8 @@
                  output-schemas (map execution-get-schema-output blocks)
 
                  schema-pairs (map vector output-schemas (rest input-schemas))]
-                (every? #(schema-subset? (first %)
-                                         (second %))
+                (every? #(schema-subset? (second %)
+                                         (first %))
                         schema-pairs)))
        {:layer :execution, :type :block-fold, :blocks blocks}
        (throw (Exception. "Cannot build fold protocol from given blocks."))))
@@ -234,21 +234,7 @@
     {:layer :execution, :type :block-mapclone, :blocks blocks})
 
 
-(execution-get-schema-output
-;  (execution-make-protocol-primative (BlockPrimative. "Job Parser"
-;                                                      (schema-make {"job_filepath" :string})
-;                                                      (schema-make {"pdb_id" :string})))
-
-                                 (execution-make-protocol-mapclone [(execution-make-protocol-primative (BlockPrimative. "Fetch FASTA"
-                                                                                                                        (schema-make {"pdb_id" :string})
-                                                                                                                        (schema-make {"fasta_filepath" :string})))
-                                                                    (execution-make-protocol-primative (BlockPrimative. "Fetch PDB"
-                                                                                                                        (schema-make {"pdb_id" :string})
-                                                                                                                        (schema-make {"pdb_filepath" :string})))
-                                                                    (execution-make-protocol-primative (BlockPrimative. "Fetch DSSP"
-                                                                                                                        (schema-make {"pdb_id" :string})
-                                                                                                                        (schema-make {"dssp_filepath" :string})))])
-)
+; testing
 
 (defn build-sprouts-execution []
   (execution-make-protocol-fold [(execution-make-protocol-primative (BlockPrimative. "Job Parser"
@@ -268,13 +254,10 @@
                                  (execution-make-protocol-primative (BlockPrimative. "Entry IDer"
                                                                                      (schema-make {"pdb_id" :string})
                                                                                      (schema-make {"protein_id" :string, "fasta_filepath" :string, "pdb_filepath" :string, "dssp_filepath" :string})))
- ])
-
-)
+ ]))
 
 (execution-get-schema-input (build-sprouts-execution))
-
-(execution-get-schema-input (build-sprouts-execution))
+(execution-get-schema-output (build-sprouts-execution))
 
 ;to find node in GUI, just path from root to the selected one.
 
@@ -358,6 +341,8 @@ Returns the listener."
      (fn [] (.setVisible frame true)))))
 
 ;(zz)
+
+
 
 
 
