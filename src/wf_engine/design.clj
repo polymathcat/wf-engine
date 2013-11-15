@@ -3,14 +3,12 @@
 ;;; namespace and externals
 
 (ns wf-engine.design
-  (:gen-class))
+  (:gen-class)
+  (:use
+       wf-engine.database
+       wf-engine.ontology))
 
 ;;; procedures
-(defn protocol? [p]
-  (or (protocol-design? p)
-      false))
-
-
 (defn design-operator? [p]
   (and (vector? p)
        (or (= (first p) :design-operator-sequential)
@@ -23,6 +21,11 @@
 (defn protocol-design? [p]
   (or (design-operator? p)
       (design-task? p)))
+
+;incomplete
+(defn protocol? [p]
+  (or (protocol-design? p)
+      false))
 
 (defn design-make-task [id ontology]
   (if (ontology-node-data-centric? id ontology)
@@ -57,8 +60,12 @@
 
 
 ;(design-make-task :delta-delta-g-prediction sprouts-ontology)
-(design-make-task :interaction-prediction sprouts-ontology)
-(design-make-task :fragment-prediction sprouts-ontology)
+;(design-make-task :interaction-prediction sprouts-ontology)
+;(design-make-task :fragment-prediction sprouts-ontology)
 
-(design-make-parallel (design-make-task :interaction-prediction sprouts-ontology)
-                      (design-make-task :fragment-prediction sprouts-ontology))
+;(design-make-parallel (design-make-task :interaction-prediction sprouts-ontology)
+;                      (design-make-task :fragment-prediction sprouts-ontology))
+
+
+
+
