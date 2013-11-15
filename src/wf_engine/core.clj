@@ -91,7 +91,9 @@
   (or (execution-block-fold? thing)
       (execution-block-mapclone? thing)))
 
-
+(defn execution-protocol? [thing]
+  (or (execution-block-primative? thing)
+      (execution-block-operator? thing)))
 
 
 ;;; INTERROGATION

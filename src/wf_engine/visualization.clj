@@ -67,7 +67,21 @@
 
 ;(export sprouts-ontology "simple.svg" :indent "yes")
 
-;;; VISUALIZATION SUPPORT
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; ID STRUCTURE INTERFACE
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn get-protocol-by-id [protocol id]
+  "Searches a protocol and returns the sub-protocol with the required ID."
+
+  (if (and (execution-protocol? protocol)
+           (= (.ID (.Contents protocol)) id))
+        protocol
+        (if (execution-block-primative? protocol)
+            nil
+            ;otherwise is an operator
+            (first (filter #(not (nil? %))
+                           (map #(get-protocol-by-id % id) (.Blocks (.Contents protocol))))))))
 
 (defn execution-list-ids [protocol]
   "Returns a list of IDs (keywords) found in an execution protocol."
@@ -99,7 +113,38 @@
 
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; LACIJ GRAPH GENERATION
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;modified from lacij examples
+(defn add-nodes [g nodes protocol]
+  (reduce (fn [g node]
+              (let [active-protocol (get-protocol-by-id protocol node)]
+                (add-node g
+                          node
+
+                          ;node display string
+                          (.Title (.Contents active-protocol))
+
+                          ;node display shape
+                          :shape (if (execution-block-primative? active-protocol)
+                                     :square
+                                      :circle))))
+          g
+          nodes))
+
+;modified from lacij examples
+(defn add-edges [g edges protocol]
+  (reduce (fn [g [src dst]]
+            (let [id (keyword (str (name src) "-" (name dst)))]
+             (add-edge g id src dst)))
+          g
+          edges))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; VISUALIZATION
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; copied from swing utils
 (defn add-action-listener [component f & args]
@@ -134,26 +179,11 @@ Returns the listener."
       (build)))
 
 
-;modified from lacij examples
-(defn add-nodes [g nodes]
-  (reduce (fn [g node]
-              (add-node g node (name node)))
-          g
-          nodes))
-
-;modified from lacij examples
-(defn add-edges [g edges]
-  (reduce (fn [g [src dst]]
-            (let [id (keyword (str (name src) "-" (name dst)))]
-             (add-edge g id src dst)))
-          g
-          edges))
-
 (defn build-execution-graph [protocol]
   (-> (graph :width 800 :height 600)
-      (add-default-node-attrs :width 30 :height 30 :shape :circle)
-      (add-nodes (execution-list-ids protocol))
-      (add-edges (execution-list-edges protocol))
+      (add-default-node-attrs :width 30 :height 30)
+      (add-nodes (execution-list-ids protocol) protocol)
+      (add-edges (execution-list-edges protocol) protocol)
       (layout :hierarchical)
       (build)))
 
