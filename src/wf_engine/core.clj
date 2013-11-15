@@ -93,8 +93,13 @@
 (export sprouts-ontology "simple.svg" :indent "yes")
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; DATA STRUCTURES
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;; procedures
+(defrecord Procotol [layer
+                    type
+                    contents])
 
 (defrecord BlockPrimative [id
                            title
@@ -102,9 +107,43 @@
                            schema-output])
 
 
-;(defrecord BlockOperator [schema-input
-;                  schema-output])
+(defrecord BlockOperator [id
+                          title
+                          blocks])
 
+;{:layer :execution, :type :block-primative, :block block}
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; PROCEDURES
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; CONSTRUCTORS
+(defn execution-make-protocol-primative [block]
+  ;will always produce a sound protocol
+  {:layer :execution, :type :block-primative, :block block})
+
+
+(defn execution-make-protocol-fold [blocks]
+  ;check if an execution of the blocks in the fold would be sound.
+   (if (or (= 1 (count blocks))
+           (let [
+                 input-schemas (map execution-get-schema-input blocks)
+
+                 output-schemas (map execution-get-schema-output blocks)
+
+                 schema-pairs (map vector output-schemas (rest input-schemas))]
+                (every? #(schema-subset? (second %)
+                                         (first %))
+                        schema-pairs)))
+       {:layer :execution, :type :block-fold, :blocks blocks}
+       (throw (Exception. "Cannot build fold protocol from given blocks."))))
+
+(defn execution-make-protocol-mapclone [blocks]
+  ;will always produce a sound protocol
+    {:layer :execution, :type :block-mapclone, :blocks blocks})
+
+;;; QUESTIONS
 
 (defn execution-block-primative? [block]
                             (and (map? block)
@@ -117,6 +156,9 @@
 (defn execution-block-mapclone? [block]
                             (and (map? block)
                                  (= (:type block) :block-mapclone)))
+
+
+;;; INTERROGATION
 
 (defn execution-get-schema-input [execution-protocol]
   (cond (execution-block-primative? execution-protocol)
@@ -147,33 +189,7 @@
           (str "unknown block type")))
 
 
-;;CONSTRUCTORS
-(defn execution-make-protocol-primative [block]
-  ;will always produce a sound protocol
-  {:layer :execution, :type :block-primative, :block block})
-
-
-(defn execution-make-protocol-fold [blocks]
-  ;check if an execution of the blocks in the fold would be sound.
-   (if (or (= 1 (count blocks))
-           (let [
-                 input-schemas (map execution-get-schema-input blocks)
-
-                 output-schemas (map execution-get-schema-output blocks)
-
-                 schema-pairs (map vector output-schemas (rest input-schemas))]
-                (every? #(schema-subset? (second %)
-                                         (first %))
-                        schema-pairs)))
-       {:layer :execution, :type :block-fold, :blocks blocks}
-       (throw (Exception. "Cannot build fold protocol from given blocks."))))
-
-(defn execution-make-protocol-mapclone [blocks]
-  ;will always produce a sound protocol
-    {:layer :execution, :type :block-mapclone, :blocks blocks})
-
-
-; testing - bottom up
+;;; TESTING - bottom up
 
 (defn build-sprouts-execution []
   (execution-make-protocol-fold [(execution-make-protocol-primative (BlockPrimative. :id-parser
@@ -200,7 +216,6 @@
                                                                                      (schema-make {"protein_id" :string, "fasta_filepath" :string, "pdb_filepath" :string, "dssp_filepath" :string})))
  ]))
 
-((execution-get-schema-input (build-sprouts-execution))
 (execution-get-schema-output (build-sprouts-execution))
 
 ;top down hacking
@@ -230,19 +245,19 @@
     {:layer :execution, :type :block-fold, :blocks [block1 block2]}
     (throw (Exception. "Cannot split block into fold operator from given blocks."))
 
-)
+))
 
-(defn execution-replace-procotol protocol id replacement
+;(defn execution-replace-procotol protocol id replacement
 
-  (if (execution-block-primative? protocol)
-      (if (= (:id protocol) id)
-           replacement
-           protocol)
+;  (if (execution-block-primative? protocol)
+;      (if (= (:id protocol) id)
+;           replacement
+;           protocol)
 
-      ;otherwise it is an operator
-      (if (= (:id protocol) id)
-                 replacement
-                (execution-make-protocol-fold (map execution-replace-procotol (:blocks protocol))))))
+;      ;otherwise it is an operator
+;      (if (= (:id protocol) id)
+;                 replacement
+;                (execution-make-protocol-fold (map execution-replace-procotol (:blocks protocol))))))
 
 
 ;testing - top down
@@ -334,6 +349,8 @@ Returns the listener."
      (fn [] (.setVisible frame true)))))
 
 ;(zz)
+
+
 
 
 
