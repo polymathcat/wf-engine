@@ -62,12 +62,12 @@
 
        (throw (Exception. "Cannot build fold protocol from given blocks."))))
 
-(defn execution-make-protocol-mapclone [blocks]
+(defn execution-make-protocol-mapclone [id title blocks]
   ;will always produce a sound protocol
   (Protocol. :execution
              :block-mapclone
-             (ExecutionOperator. :id-tmp
-                                 "Temp"
+             (ExecutionOperator. id
+                                 title
                                  blocks)))
 
 
@@ -137,7 +137,9 @@
                                                                     (schema-make {"job_filepath" :string})
                                                                     (schema-make {"pdb_id" :string}))
 
-                                 (execution-make-protocol-mapclone [(execution-make-protocol-primative :id-fetchfasta
+                                 (execution-make-protocol-mapclone :mapclone-1
+                                                                   "MapClone"
+                                                                   [(execution-make-protocol-primative :id-fetchfasta
                                                                                                        "Fetch FASTA"
                                                                                                        (schema-make {"pdb_id" :string})
                                                                                                        (schema-make {"fasta_filepath" :string}))

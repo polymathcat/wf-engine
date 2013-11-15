@@ -130,7 +130,15 @@
                           ;node display shape
                           :shape (if (execution-block-primative? active-protocol)
                                      :square
-                                      :circle))))
+                                     :circle)
+
+                          ;node width and height
+                          :width (if (execution-block-primative? active-protocol)
+                                     70
+                                     60)
+                          :height (if (execution-block-primative? active-protocol)
+                                     30
+                                     60))))
           g
           nodes))
 
@@ -181,7 +189,6 @@ Returns the listener."
 
 (defn build-execution-graph [protocol]
   (-> (graph :width 800 :height 600)
-      (add-default-node-attrs :width 30 :height 30)
       (add-nodes (execution-list-ids protocol) protocol)
       (add-edges (execution-list-edges protocol) protocol)
       (layout :hierarchical)
