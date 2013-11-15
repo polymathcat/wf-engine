@@ -200,7 +200,7 @@
                                                                                      (schema-make {"protein_id" :string, "fasta_filepath" :string, "pdb_filepath" :string, "dssp_filepath" :string})))
  ]))
 
-(execution-get-schema-input (build-sprouts-execution))
+((execution-get-schema-input (build-sprouts-execution))
 (execution-get-schema-output (build-sprouts-execution))
 
 ;top down hacking
@@ -218,6 +218,31 @@
 (defn execution-refine-protocol-to-mapsplit [block]
   ;will always produce a sound protocol
     {:layer :execution, :type :block-mapsplit, :blocks [block]})
+
+;top down - split based
+(defn execution-split-protocol-to-fold [protocol block1 block2]
+  (if (and (schema-subset? (execution-get-schema-input block1)
+                           (execution-get-schema-input protocol))
+           (schema-subset? (execution-get-schema-input block2)
+                           (execution-get-schema-output block1))
+           (schema-subset? (execution-get-schema-output protocol)
+                           (execution-get-schema-output block2)))
+    {:layer :execution, :type :block-fold, :blocks [block1 block2]}
+    (throw (Exception. "Cannot split block into fold operator from given blocks."))
+
+)
+
+(defn execution-replace-procotol protocol id replacement
+
+  (if (execution-block-primative? protocol)
+      (if (= (:id protocol) id)
+           replacement
+           protocol)
+
+      ;otherwise it is an operator
+      (if (= (:id protocol) id)
+                 replacement
+                (execution-make-protocol-fold (map execution-replace-procotol (:blocks protocol))))))
 
 
 ;testing - top down
@@ -309,6 +334,8 @@ Returns the listener."
      (fn [] (.setVisible frame true)))))
 
 ;(zz)
+
+
 
 
 
