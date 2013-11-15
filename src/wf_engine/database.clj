@@ -44,7 +44,7 @@
     s1
     (let [active-col (first (:schema s2))]
       (if (and (contains? (:schema s1) (first active-col))
-               (not (= ((first active-col) (:schema s1)) (second active-col))))
+               (not (= (get (:schema s1) (first active-col)) (second active-col))))
           (throw (Exception. "Found columns with same name but different types."))
           (schema-join
             (schema-make (assoc (:schema s1) (first active-col) (second active-col)))
@@ -84,6 +84,9 @@
                 (schema-make {:name :sequence, :format :fasta}))
 (schema-join (schema-make {:name :sequence, :format :fasta})
                 (schema-make {:name :unknown, :format :fasta}))
+
+(schema-join (schema-make {"pdb_id" :string}) (schema-make {"pdb_id" :string}))
+
 (schema-join (schema-make {:name :sequence, :format :fasta})
                 (schema-make {:name :sequence}))
 
