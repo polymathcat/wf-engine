@@ -117,15 +117,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; CONSTRUCTORS
-(defn execution-make-protocol-primative [block]
+(defn execution-make-protocol-primative [id title schema-input schema-output]
   ;will always produce a sound protocol
 
   (Protocol. :execution
              :block-primative
-             block))
+             (ExecutionPrimative. id
+                     title
+                     schema-input
+                     schema-output)))
 
-
-(defn execution-make-protocol-fold [blocks]
+(defn execution-make-protocol-fold [id title blocks]
   ;check if an execution of the blocks in the fold would be sound.
    (if (or (= 1 (count blocks))
            (let [
@@ -140,8 +142,8 @@
 
        (Protocol. :execution
                   :block-fold
-                  (ExecutionOperator. :id-tmp
-                                      "Temp"
+                  (ExecutionOperator. id
+                                      title
                                       blocks))
 
        (throw (Exception. "Cannot build fold protocol from given blocks."))))
@@ -187,7 +189,7 @@
           (reduce schema-join
                   (map execution-get-schema-input (.Blocks (.Contents protocol))))
         :else
-          (str "get-schema-input - unknown block - " protocol)))
+          (str "get-schema-input: unknown protocol " protocol)))
 
 (defn execution-get-schema-output [protocol]
   (cond (execution-block-primative? protocol)
@@ -207,57 +209,45 @@
 
 ;;; TESTING - bottom up
 
-(execution-make-protocol-mapclone [(execution-make-protocol-primative (ExecutionPrimative. :id-fetchfasta
-                                                                                                                        "Fetch FASTA"
-                                                                                                                        (schema-make {"pdb_id" :string})
-                                                                                                                        (schema-make {"fasta_filepath" :string})))
-                                                                    (execution-make-protocol-primative (ExecutionPrimative. :id-fetchpdb
-                                                                                                                        "Fetch PDB"
-                                                                                                                        (schema-make {"pdb_id" :string})
-                                                                                                                        (schema-make {"pdb_filepath" :string})))
-                                                                    (execution-make-protocol-primative (ExecutionPrimative. :id-fetchdssp
-                                                                                                                        "Fetch DSSP"
-                                                                                                                        (schema-make {"pdb_id" :string})
-                                                                                                                        (schema-make {"dssp_filepath" :string})))])
-
-
-
 (defn build-sprouts-execution []
-  (execution-make-protocol-fold [(execution-make-protocol-primative (ExecutionPrimative. :id-parser
-                                                                                     "Job Parser"
-                                                                                     (schema-make {"job_filepath" :string})
-                                                                                     (schema-make {"pdb_id" :string})))
+  (execution-make-protocol-fold :fold-1
+                                "Fold"
+                                [(execution-make-protocol-primative :id-parser
+                                                                    "Job Parser"
+                                                                    (schema-make {"job_filepath" :string})
+                                                                    (schema-make {"pdb_id" :string}))
 
-                                 (execution-make-protocol-mapclone [(execution-make-protocol-primative (ExecutionPrimative. :id-fetchfasta
-                                                                                                                        "Fetch FASTA"
-                                                                                                                        (schema-make {"pdb_id" :string})
-                                                                                                                        (schema-make {"fasta_filepath" :string})))
-                                                                    (execution-make-protocol-primative (ExecutionPrimative. :id-fetchpdb
-                                                                                                                        "Fetch PDB"
-                                                                                                                        (schema-make {"pdb_id" :string})
-                                                                                                                        (schema-make {"pdb_filepath" :string})))
-                                                                    (execution-make-protocol-primative (ExecutionPrimative. :id-fetchdssp
-                                                                                                                        "Fetch DSSP"
-                                                                                                                        (schema-make {"pdb_id" :string})
-                                                                                                                        (schema-make {"dssp_filepath" :string})))])
+                                 (execution-make-protocol-mapclone [(execution-make-protocol-primative :id-fetchfasta
+                                                                                                       "Fetch FASTA"
+                                                                                                       (schema-make {"pdb_id" :string})
+                                                                                                       (schema-make {"fasta_filepath" :string}))
+                                                                    (execution-make-protocol-primative :id-fetchpdb
+                                                                                                       "Fetch PDB"
+                                                                                                       (schema-make {"pdb_id" :string})
+                                                                                                       (schema-make {"pdb_filepath" :string}))
+                                                                    (execution-make-protocol-primative :id-fetchdssp
+                                                                                                       "Fetch DSSP"
+                                                                                                       (schema-make {"pdb_id" :string})
+                                                                                                       (schema-make {"dssp_filepath" :string}))])
 
-                                 (execution-make-protocol-primative (ExecutionPrimative. :id-fetchentryider
+                                 (execution-make-protocol-primative :id-fetchentryider
                                                                                      "Entry IDer"
                                                                                      (schema-make {"pdb_id" :string})
-                                                                                     (schema-make {"protein_id" :string, "fasta_filepath" :string, "pdb_filepath" :string, "dssp_filepath" :string})))
+                                                                                     (schema-make {"protein_id" :string, "fasta_filepath" :string, "pdb_filepath" :string, "dssp_filepath" :string}))
  ]))
 
 (execution-get-schema-output (build-sprouts-execution))
 
 ;top down - split based
-(defn execution-split-protocol-to-fold [protocol block1 block2]
+(defn execution-split-protocol-to-fold [protocol id title block1 block2]
   (if (and (schema-subset? (execution-get-schema-input block1)
                            (execution-get-schema-input protocol))
            (schema-subset? (execution-get-schema-input block2)
                            (execution-get-schema-output block1))
            (schema-subset? (execution-get-schema-output protocol)
                            (execution-get-schema-output block2)))
-    {:layer :execution, :type :block-fold, :blocks [block1 block2]}
+
+    (execution-make-protocol-fold id title [block1 block2])
     (throw (Exception. "Cannot split block into fold operator from given blocks."))))
 
 ;(defn execution-replace-procotol protocol id replacement
@@ -277,11 +267,10 @@
 
 ;to find node in GUI, just path from root to the selected one.
 
-
-(execution-make-protocol-primative (ExecutionPrimative. :root
-                                                    "Fetch FASTA"
-                                                    (schema-make {"pdb_id" :string})
-                                                    (schema-make {})))
+(execution-make-protocol-primative  :root
+                                    "Fetch FASTA"
+                                    (schema-make {"pdb_id" :string})
+                                    (schema-make {}))
 
 ;stub needed by the main project
 (defn -main
