@@ -2,6 +2,7 @@
   (:gen-class)
   (:use
        wf-engine.database
+       ;wf-engine.design
        wf-engine.ontology
        lacij.model.graph
        lacij.edit.graph
@@ -97,19 +98,19 @@
 ;;; DATA STRUCTURES
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defrecord Procotol [layer
-                    type
-                    contents])
+(defrecord Protocol [Layer
+                    Type
+                    Contents])
 
 (defrecord ExecutionPrimative [id
-                           title
-                           schema-input
-                           schema-output])
+                               title
+                               schema-input
+                               schema-output])
 
 
 (defrecord ExecutionOperator [id
-                          title
-                          blocks])
+                              title
+                              blocks])
 
 ;{:layer :execution, :type :block-primative, :block block}
 
@@ -121,7 +122,10 @@
 ;;; CONSTRUCTORS
 (defn execution-make-protocol-primative [block]
   ;will always produce a sound protocol
-  {:layer :execution, :type :block-primative, :block block})
+
+  (Protocol. :execution
+             :block-primative
+             block))
 
 
 (defn execution-make-protocol-fold [blocks]
@@ -136,60 +140,90 @@
                 (every? #(schema-subset? (second %)
                                          (first %))
                         schema-pairs)))
-       {:layer :execution, :type :block-fold, :blocks blocks}
+
+       (Protocol. :execution
+                  :block-fold
+                  (ExecutionOperator. :id-tmp
+                                      "Temp"
+                                      blocks))
+
        (throw (Exception. "Cannot build fold protocol from given blocks."))))
 
 (defn execution-make-protocol-mapclone [blocks]
   ;will always produce a sound protocol
-    {:layer :execution, :type :block-mapclone, :blocks blocks})
+  (Protocol. :execution
+             :block-mapclone
+             (ExecutionOperator. :id-tmp
+                                 "Temp"
+                                 blocks)))
+
+
+
 
 ;;; QUESTIONS
 
-(defn execution-block-primative? [block]
-                            (and (map? block)
-                                 (= (:type block) :block-primative)))
+(defn execution-block-primative? [thing]
+  (and (instance? Protocol thing)
+       (= (.Type thing) :block-primative)))
 
-(defn execution-block-fold? [block]
-                            (and (map? block)
-                                 (= (:type block) :block-fold)))
+(defn execution-block-fold? [thing]
+  (and (instance? Protocol thing)
+       (= (.Type thing) :block-fold)))
 
-(defn execution-block-mapclone? [block]
-                            (and (map? block)
-                                 (= (:type block) :block-mapclone)))
+(defn execution-block-mapclone? [thing]
+  (and (instance? Protocol thing)
+       (= (.Type thing) :block-mapclone)))
+
+
 
 
 ;;; INTERROGATION
 
-(defn execution-get-schema-input [execution-protocol]
-  (cond (execution-block-primative? execution-protocol)
-          (.schema-input (:block execution-protocol))
+(defn execution-get-schema-input [protocol]
+  (cond (execution-block-primative? protocol)
+          (.schema-input (.Contents protocol))
 
-        (execution-block-fold? execution-protocol)
-          (execution-get-schema-input (first (:blocks execution-protocol)))
+        (execution-block-fold? protocol)
+          (execution-get-schema-input (first (.blocks (.Contents protocol))))
 
-        (execution-block-mapclone? execution-protocol)
+        (execution-block-mapclone? protocol)
           (reduce schema-join
-                  (map execution-get-schema-input (:blocks execution-protocol)))
+                  (map execution-get-schema-input (.blocks (.Contents protocol))))
         :else
-          (str "unknown block type")))
+          (str "get-schema-input - unknown block - " protocol)))
 
-(defn execution-get-schema-output [execution-protocol]
-  (cond (execution-block-primative? execution-protocol)
-          (.schema-output (:block execution-protocol))
+(defn execution-get-schema-output [protocol]
+  (cond (execution-block-primative? protocol)
+          (.schema-output (.Contents protocol))
 
-        (execution-block-fold? execution-protocol)
-          (execution-get-schema-output (last (:blocks execution-protocol)))
+        (execution-block-fold? protocol)
+          (execution-get-schema-output (last (.blocks (.Contents protocol))))
 
-        (execution-block-mapclone? execution-protocol)
+        (execution-block-mapclone? protocol)
           (reduce schema-join
-                  (conj (map execution-get-schema-output (:blocks execution-protocol))
-                        (execution-get-schema-input execution-protocol)))
+                  (conj (map execution-get-schema-output (.blocks (.Contents protocol)))
+                        (execution-get-schema-input protocol)))
 
         :else
           (str "unknown block type")))
 
 
 ;;; TESTING - bottom up
+
+(execution-make-protocol-mapclone [(execution-make-protocol-primative (ExecutionPrimative. :id-fetchfasta
+                                                                                                                        "Fetch FASTA"
+                                                                                                                        (schema-make {"pdb_id" :string})
+                                                                                                                        (schema-make {"fasta_filepath" :string})))
+                                                                    (execution-make-protocol-primative (ExecutionPrimative. :id-fetchpdb
+                                                                                                                        "Fetch PDB"
+                                                                                                                        (schema-make {"pdb_id" :string})
+                                                                                                                        (schema-make {"pdb_filepath" :string})))
+                                                                    (execution-make-protocol-primative (ExecutionPrimative. :id-fetchdssp
+                                                                                                                        "Fetch DSSP"
+                                                                                                                        (schema-make {"pdb_id" :string})
+                                                                                                                        (schema-make {"dssp_filepath" :string})))])
+
+
 
 (defn build-sprouts-execution []
   (execution-make-protocol-fold [(execution-make-protocol-primative (ExecutionPrimative. :id-parser
@@ -227,9 +261,7 @@
            (schema-subset? (execution-get-schema-output protocol)
                            (execution-get-schema-output block2)))
     {:layer :execution, :type :block-fold, :blocks [block1 block2]}
-    (throw (Exception. "Cannot split block into fold operator from given blocks."))
-
-))
+    (throw (Exception. "Cannot split block into fold operator from given blocks."))))
 
 ;(defn execution-replace-procotol protocol id replacement
 
@@ -333,6 +365,8 @@ Returns the listener."
      (fn [] (.setVisible frame true)))))
 
 ;(zz)
+
+
 
 
 
