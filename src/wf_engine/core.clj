@@ -173,7 +173,7 @@
     {:layer :execution, :type :block-mapclone, :blocks blocks})
 
 
-; testing
+; testing - bottom up
 
 (defn build-sprouts-execution []
   (execution-make-protocol-fold [(execution-make-protocol-primative (BlockPrimative. :id-parser
@@ -202,8 +202,33 @@
 
 (execution-get-schema-input (build-sprouts-execution))
 (execution-get-schema-output (build-sprouts-execution))
+
+;top down hacking
+
+;apply refinement
+
+(defn execution-refine-protocol-to-fold [block]
+  ;will always produce a sound protocol
+    {:layer :execution, :type :block-fold, :blocks [block]})
+
+(defn execution-refine-protocol-to-mapclone [block]
+  ;will always produce a sound protocol
+    {:layer :execution, :type :block-mapclone, :blocks [block]})
+
+(defn execution-refine-protocol-to-mapsplit [block]
+  ;will always produce a sound protocol
+    {:layer :execution, :type :block-mapsplit, :blocks [block]})
+
+
+;testing - top down
+
 ;to find node in GUI, just path from root to the selected one.
 
+
+(execution-make-protocol-primative (BlockPrimative. :root
+                                                    "Fetch FASTA"
+                                                    (schema-make {"pdb_id" :string})
+                                                    (schema-make {})))
 
 ;stub needed by the main project
 (defn -main
