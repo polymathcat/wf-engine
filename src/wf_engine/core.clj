@@ -101,13 +101,13 @@
                     type
                     contents])
 
-(defrecord BlockPrimative [id
+(defrecord ExecutionPrimative [id
                            title
                            schema-input
                            schema-output])
 
 
-(defrecord BlockOperator [id
+(defrecord ExecutionOperator [id
                           title
                           blocks])
 
@@ -192,47 +192,31 @@
 ;;; TESTING - bottom up
 
 (defn build-sprouts-execution []
-  (execution-make-protocol-fold [(execution-make-protocol-primative (BlockPrimative. :id-parser
+  (execution-make-protocol-fold [(execution-make-protocol-primative (ExecutionPrimative. :id-parser
                                                                                      "Job Parser"
                                                                                      (schema-make {"job_filepath" :string})
                                                                                      (schema-make {"pdb_id" :string})))
 
-                                 (execution-make-protocol-mapclone [(execution-make-protocol-primative (BlockPrimative. :id-fetchfasta
+                                 (execution-make-protocol-mapclone [(execution-make-protocol-primative (ExecutionPrimative. :id-fetchfasta
                                                                                                                         "Fetch FASTA"
                                                                                                                         (schema-make {"pdb_id" :string})
                                                                                                                         (schema-make {"fasta_filepath" :string})))
-                                                                    (execution-make-protocol-primative (BlockPrimative. :id-fetchpdb
+                                                                    (execution-make-protocol-primative (ExecutionPrimative. :id-fetchpdb
                                                                                                                         "Fetch PDB"
                                                                                                                         (schema-make {"pdb_id" :string})
                                                                                                                         (schema-make {"pdb_filepath" :string})))
-                                                                    (execution-make-protocol-primative (BlockPrimative. :id-fetchdssp
+                                                                    (execution-make-protocol-primative (ExecutionPrimative. :id-fetchdssp
                                                                                                                         "Fetch DSSP"
                                                                                                                         (schema-make {"pdb_id" :string})
                                                                                                                         (schema-make {"dssp_filepath" :string})))])
 
-                                 (execution-make-protocol-primative (BlockPrimative. :id-fetchentryider
+                                 (execution-make-protocol-primative (ExecutionPrimative. :id-fetchentryider
                                                                                      "Entry IDer"
                                                                                      (schema-make {"pdb_id" :string})
                                                                                      (schema-make {"protein_id" :string, "fasta_filepath" :string, "pdb_filepath" :string, "dssp_filepath" :string})))
  ]))
 
 (execution-get-schema-output (build-sprouts-execution))
-
-;top down hacking
-
-;apply refinement
-
-(defn execution-refine-protocol-to-fold [block]
-  ;will always produce a sound protocol
-    {:layer :execution, :type :block-fold, :blocks [block]})
-
-(defn execution-refine-protocol-to-mapclone [block]
-  ;will always produce a sound protocol
-    {:layer :execution, :type :block-mapclone, :blocks [block]})
-
-(defn execution-refine-protocol-to-mapsplit [block]
-  ;will always produce a sound protocol
-    {:layer :execution, :type :block-mapsplit, :blocks [block]})
 
 ;top down - split based
 (defn execution-split-protocol-to-fold [protocol block1 block2]
@@ -265,7 +249,7 @@
 ;to find node in GUI, just path from root to the selected one.
 
 
-(execution-make-protocol-primative (BlockPrimative. :root
+(execution-make-protocol-primative (ExecutionPrimative. :root
                                                     "Fetch FASTA"
                                                     (schema-make {"pdb_id" :string})
                                                     (schema-make {})))
