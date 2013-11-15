@@ -307,6 +307,7 @@
 ;;; VISUALIZATION SUPPORT
 
 (defn execution-list-ids [protocol]
+  "Returns a list of IDs (keywords) found in an execution protocol."
 
   (if (execution-block-primative? protocol)
     (list (.ID (.Contents protocol)))
@@ -316,6 +317,24 @@
             (cons (list (.ID (.Contents protocol)))
              (map execution-list-ids (.Blocks (.Contents protocol)))))))
 
+(defn execution-list-edges [protocol]
+  "Returns a list of ID (keywords) pairs (vectors) that represent connectivity in an execution protocol.
+  Recursively, this is the outgoing edges of a protocol combined with the outgoing edges of each nodes it
+  is connected to."
+
+  (if (execution-block-primative? protocol)
+    (list)
+
+    ;otherwise is an operator
+    (reduce concat
+            (cons
+             (map #(vector (.ID (.Contents protocol)) (.ID (.Contents %)))
+                  (.Blocks (.Contents protocol)))
+
+
+             (map execution-list-edges (.Blocks (.Contents protocol))))))
+
+  )
 
 ;;; VISUALIZATION
 
@@ -352,30 +371,31 @@ Returns the listener."
       (build)))
 
 
-;from lacij examples
+;modified from lacij examples
 (defn add-nodes [g nodes]
   (reduce (fn [g node]
               (add-node g node (name node)))
           g
           nodes))
 
+;modified from lacij examples
+(defn add-edges [g edges]
+  (reduce (fn [g [src dst]]
+            (let [id (keyword (str (name src) "-" (name dst)))]
+             (add-edge g id src dst)))
+          g
+          edges))
 
-(defn build-execution-graph; build-execution-graph
-  [protocol]
+(defn build-execution-graph [protocol]
   (-> (graph :width 800 :height 600)
       (add-default-node-attrs :width 30 :height 30 :shape :circle)
       (add-nodes (execution-list-ids protocol))
-;      (add-edges [:s :r] [:t :s] [:u :s] [:v :s]
-;                 [:t1 :t] [:t2 :t] [:t3 :t] [:t4 :t] [:t5 :t]
-;                 [:u1 :u] [:u2 :u] [:v1 :v] [:v2 :v] [:v3 :v]
-;                 [:w :r] [:w1 :w] [:w2 :w] [:y :w]
-;                 [:y3 :y] [:y2 :y] [:y1 :y]
-;                 [:x :r] [:x1 :x] [:x2 :x] [:x3 :x] [:x4 :x] [:x5 :x])))
+      (add-edges (execution-list-edges protocol))
       (layout :hierarchical)
       (build)))
 
 
-(defn gen-graph2 []
+(defn gen-graph-sprouts []
    (->
     (build-execution-graph (build-sprouts-execution))
 
@@ -420,7 +440,7 @@ Returns the listener."
 (defn zz []
   (let [;active-graph  (second sprouts-ontology)
         ;active-graph  (gen-graph)
-        active-graph  (gen-graph2)
+        active-graph  (gen-graph-sprouts)
         ;doc           (:xmldoc active-graph)
         svgcanvas     (:svgcanvas active-graph)
         frame         (create-frame svgcanvas active-graph)]
