@@ -6,7 +6,7 @@
        wf-engine.ontology
        lacij.model.graph
        lacij.edit.graph
-       lacij.edit.dynamic      ;not sure if is right
+       lacij.edit.dynamic
        lacij.view.graphview
        lacij.layouts.layout
        (tikkba swing dom core)
@@ -173,6 +173,10 @@
   (and (instance? Protocol thing)
        (= (.Type thing) :block-mapclone)))
 
+(defn execution-block-operator? [thing]
+  (or (execution-block-fold? thing)
+      (execution-block-mapclone? thing)))
+
 
 
 
@@ -280,9 +284,8 @@
   (or (and (execution-block-primative? protocol)
            (= (.ID (.Contents protocol)) id))
 
-      (and (or (execution-block-fold? protocol))
-               (execution-block-mapclone? protocol))
-            (some execution-contains-id? (.Blocks (.Contents protocol)))))
+      (and (execution-block-operator? protocol)
+           (some execution-contains-id? (.Blocks (.Contents protocol))))))
 
 
 
@@ -300,6 +303,22 @@
   []
   (println "Hello, World!"))
 
+
+;;; VISUALIZATION SUPPORT
+
+(defn execution-list-ids [protocol]
+
+  (if (execution-block-primative? protocol)
+    (list (.ID (.Contents protocol)))
+
+    ;otherwise is an operator
+    (reduce concat
+            (cons (list (.ID (.Contents protocol)))
+             (map execution-list-ids (.Blocks (.Contents protocol)))))))
+
+
+;;; VISUALIZATION
+
 ;; copied from swing utils
 (defn add-action-listener [component f & args]
   "Adds an ActionLister to component. When the action fires, f will be
@@ -316,7 +335,8 @@ Returns the listener."
    svgcanvas
    (-> g
        (add-node! :appolon "Appolon" :x 50 :y 350)
-       (add-edge! :appolon-athena :appolon :athena))))
+       (add-edge! :appolon-athena :appolon :athena)
+       )))
 
 (defn gen-graph []
   (-> (graph)
@@ -330,6 +350,38 @@ Returns the listener."
       (add-edge :hera-matrimony :hera :matrimony)
       (add-edge :son-zeus-hera :ares :matrimony)
       (build)))
+
+
+;from lacij examples
+(defn add-nodes [g nodes]
+  (reduce (fn [g node]
+              (add-node g node (name node)))
+          g
+          nodes))
+
+
+(defn build-execution-graph; build-execution-graph
+  [protocol]
+  (-> (graph :width 800 :height 600)
+      (add-default-node-attrs :width 30 :height 30 :shape :circle)
+      (add-nodes (execution-list-ids protocol))
+;      (add-edges [:s :r] [:t :s] [:u :s] [:v :s]
+;                 [:t1 :t] [:t2 :t] [:t3 :t] [:t4 :t] [:t5 :t]
+;                 [:u1 :u] [:u2 :u] [:v1 :v] [:v2 :v] [:v3 :v]
+;                 [:w :r] [:w1 :w] [:w2 :w] [:y :w]
+;                 [:y3 :y] [:y2 :y] [:y1 :y]
+;                 [:x :r] [:x1 :x] [:x2 :x] [:x3 :x] [:x4 :x] [:x5 :x])))
+      (layout :hierarchical)
+      (build)))
+
+
+(defn gen-graph2 []
+   (->
+    (build-execution-graph (build-sprouts-execution))
+
+    ;(add-node! :appolon "Appolon" :x 50 :y 350)
+    ;(add-edge! :appolon-athena :appolon :athena)
+    ))
 
 (defn create-frame [svgcanvas active-graph]
   (let [frame  (JFrame.)
@@ -366,14 +418,16 @@ Returns the listener."
     frame))
 
 (defn zz []
-  (let [active-graph  (second sprouts-ontology)
+  (let [;active-graph  (second sprouts-ontology)
+        ;active-graph  (gen-graph)
+        active-graph  (gen-graph2)
         ;doc           (:xmldoc active-graph)
         svgcanvas     (:svgcanvas active-graph)
         frame         (create-frame svgcanvas active-graph)]
     (SwingUtilities/invokeAndWait
      (fn [] (.setVisible frame true)))))
 
-;(zz)
+(zz)
 
 
 
