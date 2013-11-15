@@ -99,20 +99,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defrecord Protocol [Layer
-                    Type
-                    Contents])
+                     Type
+                     Contents])
 
-(defrecord ExecutionPrimative [id
-                               title
-                               schema-input
-                               schema-output])
+(defrecord ExecutionPrimative [ID
+                               Title
+                               Schema-input
+                               Schema-output])
 
-
-(defrecord ExecutionOperator [id
-                              title
-                              blocks])
-
-;{:layer :execution, :type :block-primative, :block block}
+(defrecord ExecutionOperator [ID
+                              Title
+                              Blocks])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -181,27 +178,27 @@
 
 (defn execution-get-schema-input [protocol]
   (cond (execution-block-primative? protocol)
-          (.schema-input (.Contents protocol))
+          (.Schema-input (.Contents protocol))
 
         (execution-block-fold? protocol)
-          (execution-get-schema-input (first (.blocks (.Contents protocol))))
+          (execution-get-schema-input (first (.Blocks (.Contents protocol))))
 
         (execution-block-mapclone? protocol)
           (reduce schema-join
-                  (map execution-get-schema-input (.blocks (.Contents protocol))))
+                  (map execution-get-schema-input (.Blocks (.Contents protocol))))
         :else
           (str "get-schema-input - unknown block - " protocol)))
 
 (defn execution-get-schema-output [protocol]
   (cond (execution-block-primative? protocol)
-          (.schema-output (.Contents protocol))
+          (.Schema-output (.Contents protocol))
 
         (execution-block-fold? protocol)
-          (execution-get-schema-output (last (.blocks (.Contents protocol))))
+          (execution-get-schema-output (last (.Blocks (.Contents protocol))))
 
         (execution-block-mapclone? protocol)
           (reduce schema-join
-                  (conj (map execution-get-schema-output (.blocks (.Contents protocol)))
+                  (conj (map execution-get-schema-output (.Blocks (.Contents protocol)))
                         (execution-get-schema-input protocol)))
 
         :else
@@ -266,12 +263,12 @@
 ;(defn execution-replace-procotol protocol id replacement
 
 ;  (if (execution-block-primative? protocol)
-;      (if (= (:id protocol) id)
+;      (if (= (.ID protocol) id)
 ;           replacement
 ;           protocol)
 
 ;      ;otherwise it is an operator
-;      (if (= (:id protocol) id)
+;      (if (= (.ID protocol) id)
 ;                 replacement
 ;                (execution-make-protocol-fold (map execution-replace-procotol (:blocks protocol))))))
 
