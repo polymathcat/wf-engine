@@ -14,7 +14,7 @@
        (tikkba swing dom core)
        tikkba.utils.xml)
 
-  (:import (javax.swing JFrame JPanel JButton BoxLayout SwingUtilities)
+  (:import (javax.swing JFrame JOptionPane JPanel JButton JList BoxLayout SwingUtilities)
            (java.awt.event ActionListener)
            (java.awt BorderLayout Color)
            java.awt.Component))
@@ -174,6 +174,8 @@
       (add-edge :son-zeus-hera :ares :matrimony)
       (build)))
 
+;http://stackoverflow.com/questions/1558852/learning-resources-and-tutorials-for-using-the-java-batik-library
+
 ;; copied from swing utils
 (defn add-action-listener [component f & args]
   "Adds an ActionLister to component. When the action fires, f will be
@@ -186,6 +188,7 @@ Returns the listener."
     listener))
 
 (defn on-action [event svgcanvas graph]
+  ;(JOptionPane/showMessageDialog nil "Hello World")
   (do-batik
    svgcanvas
    (-> graph
@@ -203,11 +206,13 @@ Returns the listener."
         panel-protocol       (JPanel.)
 
         button               (JButton. "Actionzzz")
+        list-nodes           (JList.)
+
         pane                 (.getContentPane frame)]
 
     ;set up main JFrame
     (.setLayout pane nil)
-    (.setSize frame (+ 1280 16) (+ 720 38)) ; offset is for window frames.
+    (.setSize frame (+ 1280 16) (+ 720 38)); offset is for window frames.
     (add-action-listener button on-action svgcanvas-other graph-other)
 
     ;set up the ontology panel
@@ -247,6 +252,10 @@ Returns the listener."
      (fn [] (.setVisible frame true)))))
 
 (create-window)
+
+(:svgcanvas (build-execution-graph (build-sprouts-execution)))
+
+
 
 
 
