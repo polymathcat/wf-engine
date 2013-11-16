@@ -150,28 +150,16 @@
           g
           edges))
 
+(defn build-execution-graph [protocol]
+  (-> (graph :width 800 :height 600)
+      (add-nodes (execution-list-ids protocol) protocol)
+      (add-edges (execution-list-edges protocol) protocol)
+      (layout :hierarchical)
+      (build)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; VISUALIZATION
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; copied from swing utils
-(defn add-action-listener [component f & args]
-  "Adds an ActionLister to component. When the action fires, f will be
-invoked with the event as its first argument followed by args.
-Returns the listener."
-
-  (let [listener (proxy [ActionListener] []
-                   (actionPerformed [event] (apply f event args)))]
-    (.addActionListener component listener)
-    listener))
-
-(defn on-action [event svgcanvas g]
-  (do-batik
-   svgcanvas
-   (-> g
-       (add-node! :appolon "Appolon" :x 50 :y 350)
-       (add-edge! :appolon-athena :appolon :athena)
-       )))
 
 (defn gen-graph []
   (-> (graph)
@@ -186,42 +174,54 @@ Returns the listener."
       (add-edge :son-zeus-hera :ares :matrimony)
       (build)))
 
+;; copied from swing utils
+(defn add-action-listener [component f & args]
+  "Adds an ActionLister to component. When the action fires, f will be
+invoked with the event as its first argument followed by args.
+Returns the listener."
 
-(defn build-execution-graph [protocol]
-  (-> (graph :width 800 :height 600)
-      (add-nodes (execution-list-ids protocol) protocol)
-      (add-edges (execution-list-edges protocol) protocol)
-      (layout :hierarchical)
-      (build)))
+  (let [listener (proxy [ActionListener] []
+                   (actionPerformed [event] (apply f event args)))]
+    (.addActionListener component listener)
+    listener))
 
-(defn gen-graph-sprouts []
-   (->
-    (build-execution-graph (build-sprouts-execution))
+(defn on-action [event svgcanvas graph]
+  (do-batik
+   svgcanvas
+   (-> graph
+       (add-node! :appolon "Appolon" :x 50 :y 350)
+       (add-edge! :appolon-athena :appolon :athena)
+       )))
 
-    ;(add-node! :appolon "Appolon" :x 50 :y 350)
-    ;(add-edge! :appolon-athena :appolon :athena)
-    ))
+(defn create-frame [graph-other graph-protocol]
+  (let [frame                (JFrame.)
 
-(defn create-frame [svgcanvas active-graph]
-  (let [frame  (JFrame.)
+        svgcanvas-protocol   (:svgcanvas graph-protocol)
+        svgcanvas-other      (:svgcanvas graph-other)
 
-        panel-ontology (JPanel.)
-        panel-protocol (JPanel.)
+        panel-ontology       (JPanel.)
+        panel-protocol       (JPanel.)
 
-        button (JButton. "Actionzzz")
-        pane   (.getContentPane frame)]
+        button               (JButton. "Actionzzz")
+        pane                 (.getContentPane frame)]
 
     ;set up main JFrame
     (.setLayout pane nil)
-    (.setSize frame (+ 1280 16) (+ 720 38))
-    (add-action-listener button on-action svgcanvas active-graph)
-
+    (.setSize frame (+ 1280 16) (+ 720 38)) ; offset is for window frames.
+    (add-action-listener button on-action svgcanvas-other graph-other)
 
     ;set up the ontology panel
     (.setLocation panel-ontology 0 0)
     (.setSize panel-ontology 640 720)
+    (.setLayout panel-ontology nil)
     (.setBackground panel-ontology Color/BLACK)
+
+    (.add panel-ontology svgcanvas-other)
+     (.setSize svgcanvas-other 640 600)
+     (.setLocation svgcanvas-other 0 0)
     (.add panel-ontology button)
+      (.setSize button 100 20)
+      (.setLocation button 100 650)
     (.add pane panel-ontology)
 
     ;set up the protocol panel
@@ -229,22 +229,24 @@ Returns the listener."
     (.setSize panel-protocol 640 720)
     (.setLayout panel-protocol nil)
     (.setBackground panel-protocol Color/BLUE)
-    (.add panel-protocol svgcanvas)
-      (.setSize svgcanvas 640 600)
-      (.setLocation svgcanvas 0 0)
+
+    (.add panel-protocol svgcanvas-protocol)
+      (.setSize svgcanvas-protocol 640 600)
+      (.setLocation svgcanvas-protocol 0 0)
     (.add pane panel-protocol)
 
     frame))
 
-(defn zz []
-  (let [;active-graph  (second sprouts-ontology)
-        ;active-graph  (gen-graph)
-        active-graph  (gen-graph-sprouts)
-        ;doc           (:xmldoc active-graph)
-        svgcanvas     (:svgcanvas active-graph)
-        frame         (create-frame svgcanvas active-graph)]
+(defn create-window []
+  (let [;graph-other  (second sprouts-ontology)
+        graph-other  (gen-graph)
+        graph-protocol  (build-execution-graph (build-sprouts-execution))
+        ;doc           (:xmldoc agraph-protocol)
+        frame         (create-frame graph-other graph-protocol)]
     (SwingUtilities/invokeAndWait
      (fn [] (.setVisible frame true)))))
 
-(zz)
+(create-window)
+
+
 
