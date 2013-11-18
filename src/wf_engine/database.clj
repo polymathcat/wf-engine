@@ -50,6 +50,10 @@
             (schema-make (assoc (:schema s1) (first active-col) (second active-col)))
             (schema-make (dissoc (:schema s2) (first active-col))))))))
 
+(defn schema-string [s]
+  (clojure.string/join " " (:schema s)))
+
+
 ;;; tests
 ;(schema? 1)
 ;(schema? {:type :relation, :relation nil})
@@ -90,6 +94,8 @@
 (schema-join (schema-make {:name :sequence, :format :fasta})
                 (schema-make {:name :sequence}))
 
+
+(schema-string (schema-make {:name :sequence, :format :fasta}))
 
 
 

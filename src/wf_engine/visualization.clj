@@ -6,6 +6,7 @@
   (:gen-class)
   (:use
        wf-engine.core
+       wf-engine.database
        lacij.model.graph
        lacij.edit.graph
        lacij.edit.dynamic
@@ -14,7 +15,7 @@
        (tikkba swing dom core)
        tikkba.utils.xml)
 
-  (:import (javax.swing JFrame JOptionPane JPanel JButton JList BoxLayout SwingUtilities JTextField JScrollPane)
+  (:import (javax.swing JFrame JOptionPane JPanel JButton JList BoxLayout SwingUtilities JTextArea JTextField JScrollPane)
            (java.awt.event ActionListener MouseListener)
            (java.awt BorderLayout Color)
            java.awt.Component))
@@ -195,15 +196,20 @@ Returns the listener."
        (add-edge! :appolon-athena :appolon :athena)
        )))
 
-(defn gui-action-selected-id [event protocol text-title text-id]
+(defn gui-action-selected-id [event protocol list text-title text-id textarea-in textarea-out]
   ;(JOptionPane/showMessageDialog nil "Hello World")
-  (let [id :fold-1
-        title  (.Title (.Contents (get-protocol-by-id protocol id)))]
+  (let [id    (first (.getSelectedValues list))
+        title (.Title (.Contents (get-protocol-by-id protocol id)))
+        in    (execution-get-schema-input (get-protocol-by-id protocol id))
+        out   (execution-get-schema-output (get-protocol-by-id protocol id))]
 
-    (.setText text-title title)
-    (.setText text-id (name id)))
-    ;(JOptionPane/showMessageDialog nil "Hello World")
-  )
+    (.setText text-title (str "Name: "title))
+    (.setText text-id (str "ID: "(name id)))
+
+    (.setText textarea-in (str "In: " (schema-string in)))
+    (.setText textarea-out (str "Out: "  (schema-string out)))
+
+))
 
 (defn create-frame [graph-other protocol graph-protocol]
   (let [frame                (JFrame.)
@@ -214,12 +220,14 @@ Returns the listener."
         panel-ontology       (JPanel.)
         panel-protocol       (JPanel.)
 
-        button               (JButton. "Actionzzz")
+        button               (JButton. "Unimplemented")
         list-nodes           (JList.)
         ;scrollpane-nodes     (JScrollPane. list-nodes)
 
-        text-title           (JTextField. "a")
-        text-id              (JTextField. "b")
+        text-title           (JTextField. "N/A")
+        text-id              (JTextField. "N/A")
+        textarea-in          (JTextArea. "N/A")
+        textarea-out         (JTextArea. "N/A")
 
         pane                 (.getContentPane frame)]
 
@@ -227,7 +235,7 @@ Returns the listener."
     (.setLayout pane nil)
     (.setSize frame (+ 1280 16) (+ 720 38)); offset is for window frames.
     (add-action-listener button on-action svgcanvas-other graph-other)
-    (add-mouse-listener list-nodes gui-action-selected-id protocol text-title text-id)
+    (add-mouse-listener list-nodes gui-action-selected-id protocol list-nodes text-title text-id textarea-in textarea-out)
 
     ;ONTOLOGY PANEL
     (.setLocation panel-ontology 0 0)
@@ -261,7 +269,6 @@ Returns the listener."
       (.setListData list-nodes (to-array (execution-list-ids protocol)))
       ;(.revalidate list-nodes)
 
-
     ;(.add panel-protocol scrollpane-nodes)
     ;(.add (.getViewport scrollpane-nodes) list-nodes)
     ;(.setVisible scrollpane-nodes true)
@@ -269,11 +276,19 @@ Returns the listener."
 
     (.add panel-protocol text-title)
       (.setSize text-title 100 20)
-      (.setLocation text-title 100 650)
+      (.setLocation text-title 140 610)
 
      (.add panel-protocol text-id)
       (.setSize text-id 100 20)
-      (.setLocation text-id 100 670)
+      (.setLocation text-id 140 630)
+
+     (.add panel-protocol textarea-in)
+      (.setSize textarea-in 200 20)
+      (.setLocation textarea-in 140 650)
+
+     (.add panel-protocol textarea-out)
+      (.setSize textarea-out 200 20)
+      (.setLocation textarea-out 140 (+ 650 20))
 
 
 
@@ -282,8 +297,8 @@ Returns the listener."
     frame))
 
 (defn create-window []
-  (let [;graph-other    (second sprouts-ontology)
-        graph-other     (gen-graph)
+  (let [graph-other    (second sprouts-ontology)
+        ;graph-other     (gen-graph)
         protocol        (build-sprouts-execution)
         graph-protocol  (build-execution-graph protocol)
         ;doc            (:xmldoc agraph-protocol)

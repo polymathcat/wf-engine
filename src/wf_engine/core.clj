@@ -132,7 +132,7 @@
 (defn build-sprouts-execution []
   (execution-make-protocol-fold :fold-1
                                 "Fold"
-                                [(execution-make-protocol-primative :id-parser
+                                [(execution-make-protocol-primative :job-parser
                                                                     "Job Parser"
                                                                     (schema-make {"job_filepath" :string})
                                                                     (schema-make {"pdb_id" :string}))
@@ -222,6 +222,8 @@
 (defn -main
   []
   (println "Hello, World!"))
+
+
 
 
 
