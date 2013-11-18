@@ -14,7 +14,7 @@
        (tikkba swing dom core)
        tikkba.utils.xml)
 
-  (:import (javax.swing JFrame JOptionPane JPanel JButton JList BoxLayout SwingUtilities)
+  (:import (javax.swing JFrame JOptionPane JPanel JButton JList BoxLayout SwingUtilities JTextField)
            (java.awt.event ActionListener)
            (java.awt BorderLayout Color)
            java.awt.Component))
@@ -70,18 +70,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ID STRUCTURE INTERFACE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn get-protocol-by-id [protocol id]
-  "Searches a protocol and returns the sub-protocol with the required ID."
-
-  (if (and (execution-protocol? protocol)
-           (= (.ID (.Contents protocol)) id))
-        protocol
-        (if (execution-block-primative? protocol)
-            nil
-            ;otherwise is an operator
-            (first (filter #(not (nil? %))
-                           (map #(get-protocol-by-id % id) (.Blocks (.Contents protocol))))))))
 
 (defn execution-list-ids [protocol]
   "Returns a list of IDs (keywords) found in an execution protocol."
@@ -196,7 +184,15 @@ Returns the listener."
        (add-edge! :appolon-athena :appolon :athena)
        )))
 
-(defn create-frame [graph-other graph-protocol]
+(defn gui-action-selected-id [event graph text-title text-id]
+  ;(JOptionPane/showMessageDialog nil "Hello World")
+  (let [id :fold-1
+        title  (.Title (.Contents (get-protocol-by-id graph id)))]
+
+    (.setText text-title title)
+    (.setText text-id (name id))))
+
+(defn create-frame [graph-other protocol graph-protocol]
   (let [frame                (JFrame.)
 
         svgcanvas-protocol   (:svgcanvas graph-protocol)
@@ -208,18 +204,21 @@ Returns the listener."
         button               (JButton. "Actionzzz")
         list-nodes           (JList.)
 
+        text-title           (JTextField. "a")
+        text-id              (JTextField. "b")
+
         pane                 (.getContentPane frame)]
 
     ;set up main JFrame
     (.setLayout pane nil)
     (.setSize frame (+ 1280 16) (+ 720 38)); offset is for window frames.
-    (add-action-listener button on-action svgcanvas-other graph-other)
+    ;(add-action-listener button on-action svgcanvas-other graph-other)
+    (add-action-listener button gui-action-selected-id protocol text-title text-id)
 
-    ;set up the ontology panel
+    ;ONTOLOGY PANEL
     (.setLocation panel-ontology 0 0)
     (.setSize panel-ontology 640 720)
     (.setLayout panel-ontology nil)
-    (.setBackground panel-ontology Color/BLACK)
 
     (.add panel-ontology svgcanvas-other)
      (.setSize svgcanvas-other 640 600)
@@ -229,33 +228,39 @@ Returns the listener."
       (.setLocation button 100 650)
     (.add pane panel-ontology)
 
-    ;set up the protocol panel
+    ;PROTOCOL PANEL
     (.setLocation panel-protocol 640 0)
     (.setSize panel-protocol 640 720)
     (.setLayout panel-protocol nil)
-    (.setBackground panel-protocol Color/BLUE)
 
+    ;top
     (.add panel-protocol svgcanvas-protocol)
       (.setSize svgcanvas-protocol 640 600)
       (.setLocation svgcanvas-protocol 0 0)
+
+    ;bottom
+    (.add panel-protocol text-title)
+      (.setSize text-title 100 20)
+      (.setLocation text-title 100 650)
+     (.add panel-protocol text-id)
+      (.setSize text-id 100 20)
+      (.setLocation text-id 100 670)
+
+
+
     (.add pane panel-protocol)
 
     frame))
 
 (defn create-window []
-  (let [;graph-other  (second sprouts-ontology)
-        graph-other  (gen-graph)
-        graph-protocol  (build-execution-graph (build-sprouts-execution))
-        ;doc           (:xmldoc agraph-protocol)
-        frame         (create-frame graph-other graph-protocol)]
+  (let [;graph-other    (second sprouts-ontology)
+        graph-other     (gen-graph)
+        protocol        (build-sprouts-execution)
+        graph-protocol  (build-execution-graph protocol)
+        ;doc            (:xmldoc agraph-protocol)
+        frame           (create-frame graph-other protocol graph-protocol)]
     (SwingUtilities/invokeAndWait
      (fn [] (.setVisible frame true)))))
 
 (create-window)
-
-(:svgcanvas (build-execution-graph (build-sprouts-execution)))
-
-
-
-
 

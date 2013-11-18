@@ -205,21 +205,25 @@
       (and (execution-block-operator? protocol)
            (some execution-contains-id? (.Blocks (.Contents protocol))))))
 
+(defn get-protocol-by-id [protocol id]
+  "Searches a protocol and returns the sub-protocol with the required ID."
 
+  (if (and (execution-protocol? protocol)
+           (= (.ID (.Contents protocol)) id))
+        protocol
+        (if (execution-block-primative? protocol)
+            nil
+            ;otherwise is an operator
+            (first (filter #(not (nil? %))
+                           (map #(get-protocol-by-id % id) (.Blocks (.Contents protocol))))))))
 
-;testing - top down
-
-;to find node in GUI, just path from root to the selected one.
-
-(execution-make-protocol-primative  :root
-                                    "Fetch FASTA"
-                                    (schema-make {"pdb_id" :string})
-                                    (schema-make {}))
 
 ;stub needed by the main project
 (defn -main
   []
   (println "Hello, World!"))
+
+
 
 
 
