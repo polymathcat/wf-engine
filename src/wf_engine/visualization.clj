@@ -14,8 +14,8 @@
        (tikkba swing dom core)
        tikkba.utils.xml)
 
-  (:import (javax.swing JFrame JOptionPane JPanel JButton JList BoxLayout SwingUtilities JTextField)
-           (java.awt.event ActionListener)
+  (:import (javax.swing JFrame JOptionPane JPanel JButton JList BoxLayout SwingUtilities JTextField JScrollPane)
+           (java.awt.event ActionListener MouseListener)
            (java.awt BorderLayout Color)
            java.awt.Component))
 
@@ -175,6 +175,17 @@ Returns the listener."
     (.addActionListener component listener)
     listener))
 
+(defn add-mouse-listener [component mc & args]
+  (let [listener (proxy [MouseListener] []
+                   (mouseClicked  [event] (apply mc event args))
+                   (mouseEntered  [event] (+ 1 1))
+                   (mouseExited   [event] (+ 1 1))
+                   (mousePressed  [event] (+ 1 1))
+                   (mouseReleased [event] (+ 1 1))
+                   )]
+    (.addMouseListener  component listener)
+    listener))
+
 (defn on-action [event svgcanvas graph]
   ;(JOptionPane/showMessageDialog nil "Hello World")
   (do-batik
@@ -184,13 +195,15 @@ Returns the listener."
        (add-edge! :appolon-athena :appolon :athena)
        )))
 
-(defn gui-action-selected-id [event graph text-title text-id]
+(defn gui-action-selected-id [event protocol text-title text-id]
   ;(JOptionPane/showMessageDialog nil "Hello World")
   (let [id :fold-1
-        title  (.Title (.Contents (get-protocol-by-id graph id)))]
+        title  (.Title (.Contents (get-protocol-by-id protocol id)))]
 
     (.setText text-title title)
-    (.setText text-id (name id))))
+    (.setText text-id (name id)))
+    ;(JOptionPane/showMessageDialog nil "Hello World")
+  )
 
 (defn create-frame [graph-other protocol graph-protocol]
   (let [frame                (JFrame.)
@@ -203,6 +216,7 @@ Returns the listener."
 
         button               (JButton. "Actionzzz")
         list-nodes           (JList.)
+        ;scrollpane-nodes     (JScrollPane. list-nodes)
 
         text-title           (JTextField. "a")
         text-id              (JTextField. "b")
@@ -212,8 +226,8 @@ Returns the listener."
     ;set up main JFrame
     (.setLayout pane nil)
     (.setSize frame (+ 1280 16) (+ 720 38)); offset is for window frames.
-    ;(add-action-listener button on-action svgcanvas-other graph-other)
-    (add-action-listener button gui-action-selected-id protocol text-title text-id)
+    (add-action-listener button on-action svgcanvas-other graph-other)
+    (add-mouse-listener list-nodes gui-action-selected-id protocol text-title text-id)
 
     ;ONTOLOGY PANEL
     (.setLocation panel-ontology 0 0)
@@ -239,9 +253,24 @@ Returns the listener."
       (.setLocation svgcanvas-protocol 0 0)
 
     ;bottom
+    (.add panel-protocol list-nodes)
+
+      (.setSize list-nodes 80 90)
+      (.setLocation list-nodes 0 610)
+
+      (.setListData list-nodes (to-array (execution-list-ids protocol)))
+      ;(.revalidate list-nodes)
+
+
+    ;(.add panel-protocol scrollpane-nodes)
+    ;(.add (.getViewport scrollpane-nodes) list-nodes)
+    ;(.setVisible scrollpane-nodes true)
+
+
     (.add panel-protocol text-title)
       (.setSize text-title 100 20)
       (.setLocation text-title 100 650)
+
      (.add panel-protocol text-id)
       (.setSize text-id 100 20)
       (.setLocation text-id 100 670)
@@ -263,4 +292,6 @@ Returns the listener."
      (fn [] (.setVisible frame true)))))
 
 (create-window)
+
+
 
