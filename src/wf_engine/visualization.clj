@@ -2,10 +2,10 @@
 
 ;;; namespace and externals
 
-(ns wf-engine.core
+(ns wf-engine.visualization
   (:gen-class)
   (:use
-       wf-engine.core
+       wf-engine.execution
        wf-engine.database
        lacij.model.graph
        lacij.edit.graph
@@ -234,6 +234,7 @@ Returns the listener."
     ;set up main JFrame
     (.setLayout pane nil)
     (.setSize frame (+ 1280 16) (+ 720 38)); offset is for window frames.
+    ;(.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
     (add-action-listener button on-action svgcanvas-other graph-other)
     (add-mouse-listener list-nodes gui-action-selected-id protocol list-nodes text-title text-id textarea-in textarea-out)
 
@@ -306,7 +307,9 @@ Returns the listener."
     (SwingUtilities/invokeAndWait
      (fn [] (.setVisible frame true)))))
 
-(create-window)
+;(create-window)
+
+
 
 
 

@@ -86,8 +86,8 @@
                 (schema-make {:name :sequence, :format :fasta}))
 (schema-join (schema-make {:name :sequence, :format :fasta})
                 (schema-make {:name :sequence, :format :fasta}))
-(schema-join (schema-make {:name :sequence, :format :fasta})
-                (schema-make {:name :unknown, :format :fasta}))
+;(schema-join (schema-make {:name :sequence, :format :fasta})
+;                (schema-make {:name :unknown, :format :fasta}))
 
 (schema-join (schema-make {"pdb_id" :string}) (schema-make {"pdb_id" :string}))
 
@@ -96,6 +96,8 @@
 
 
 (schema-string (schema-make {:name :sequence, :format :fasta}))
+
+
 
 
 
