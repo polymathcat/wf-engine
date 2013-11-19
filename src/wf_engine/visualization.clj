@@ -312,6 +312,16 @@ Returns the listener."
 (def ^{:dynamic true} *execution-protocol* (atom nil))
 (def ^{:dynamic true} *execution-graph* (atom nil))
 
+(defn insert-node-listeners [graph protocol]
+
+  (reduce (fn [g nodeid]
+              (add-listener g nodeid "click" on-click-listener))
+          graph
+          (execution-list-ids protocol))
+
+
+ )
+
 (defn create-window []
 
   (reset! *execution-protocol* (build-sprouts-execution))
@@ -320,7 +330,7 @@ Returns the listener."
         graph-protocol  (build-execution-graph (deref *execution-protocol*))
         frame           (create-frame graph-other
                                       (:svgcanvas graph-protocol))
-        graph-protocol  (add-listener graph-protocol :fold-1 "click" on-click-listener)
+        graph-protocol  (insert-node-listeners graph-protocol (deref *execution-protocol*))
         ]
 
     (reset! *execution-graph* graph-protocol)
