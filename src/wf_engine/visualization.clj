@@ -193,6 +193,29 @@ Returns the listener."
 ;;; GRAPH LISTENERS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn gui-populate-block-info []
+  (if (nil? (deref *execution-active-id*))
+
+    ;node not selected, clear
+    (do (.setText (:text-title (deref *frame-components*))   "N/A")
+        (.setText (:text-id (deref *frame-components*))      "N/A")
+        (.setText (:textarea-in (deref *frame-components*))  "N/A")
+        (.setText (:textarea-out (deref *frame-components*)) "N/A"))
+
+    ;node selected, populate
+    (let [protocol   (deref *execution-protocol*)
+          components (deref *frame-components*)
+
+          id    (deref *execution-active-id*)
+          title (.Title (.Contents (get-protocol-by-id protocol id)))
+          in    (execution-get-schema-input (get-protocol-by-id protocol id))
+          out   (execution-get-schema-output (get-protocol-by-id protocol id))]
+
+          (do (.setText (:text-title components) title)
+              (.setText (:text-id components) (name id))
+              (.setText (:textarea-in components) (schema-string in))
+              (.setText (:textarea-out components) (schema-string out))))))
+
 (defn node-listener!
   [event id]
 
@@ -203,11 +226,7 @@ Returns the listener."
         in    (execution-get-schema-input (get-protocol-by-id (deref *execution-protocol*) id))
         out   (execution-get-schema-output (get-protocol-by-id (deref *execution-protocol*) id))]
 
-    ;populate block info
-    (.setText (:text-title (deref *frame-components*)) title)
-    (.setText (:text-id (deref *frame-components*)) (name id))
-    (.setText (:textarea-in (deref *frame-components*)) (schema-string in))
-    (.setText (:textarea-out (deref *frame-components*)) (schema-string out))
+    (gui-populate-block-info)
 
     ;set defaults for split.
     (.setText (:block1-text-title (deref *frame-components*)) (str title " (1)"))
@@ -224,11 +243,11 @@ Returns the listener."
 
 (defn listener-button-split-fold! [event]
   (try
-    (let [block1-id    (keyword (.getText (:block1-text-title (deref *frame-components*))))
+    (let [block1-id    (keyword (.getText (:block1-text-id (deref *frame-components*))))
           block1-title (.getText (:block1-text-title (deref *frame-components*)))
           block1-in    (schema-parse (.getText (:block1-textarea-in (deref *frame-components*))))
           block1-out   (schema-parse (.getText (:block1-textarea-out (deref *frame-components*))))
-          block2-id    (keyword (.getText (:block2-text-title (deref *frame-components*))))
+          block2-id    (keyword (.getText (:block2-text-id (deref *frame-components*))))
           block2-title (.getText (:block2-text-title (deref *frame-components*)))
           block2-in    (schema-parse (.getText (:block2-textarea-in (deref *frame-components*))))
           block2-out   (schema-parse (.getText (:block2-textarea-out (deref *frame-components*))))]
@@ -254,6 +273,9 @@ Returns the listener."
               ]
 
               (reset! *execution-protocol* protocol-new)
+
+              (reset! *execution-active-id* nil)
+
               (create-and-attach-graph!))))
   (catch Exception e
     (JOptionPane/showMessageDialog nil (str "" (.getMessage e))))))
@@ -305,10 +327,10 @@ Returns the listener."
         label-in    (JLabel. "Input:")
         label-out   (JLabel. "Output:")
 
-        components      {:text-title           (JTextField. "N/A")
-                         :text-id              (JTextField. "N/A")
-                         :textarea-in          (JTextField. "N/A")
-                         :textarea-out         (JTextField. "N/A")
+        components      {:text-title           (JTextField. "")
+                         :text-id              (JTextField. "")
+                         :textarea-in          (JTextField. "")
+                         :textarea-out         (JTextField. "")
 
                          :block1-text-title           (JTextField. "")
                          :block1-text-id              (JTextField. "")
@@ -460,6 +482,9 @@ Returns the listener."
   (.removeActionListener (:button-split-fold (deref *frame-components*))
                          (first (.getActionListeners (:button-split-fold (deref *frame-components*)))))
   (add-action-listener (:button-split-fold (deref *frame-components*)) #(listener-button-split-fold! %))
+
+  ;update swing component state
+  (gui-populate-block-info)
 
   nil)
 
