@@ -53,6 +53,11 @@
 (defn schema-string [s]
   (clojure.string/join " " (:schema s)))
 
+(defn schema-parse [s]
+  (schema-make (load-string (str "{" (clojure.string/replace (clojure.string/replace (clojure.string/replace s "] [" ", ")
+                                                         "[" "")
+                                 "]" "")
+                                 "}"))))
 
 ;;; tests
 ;(schema? 1)
@@ -98,9 +103,6 @@
 (schema-string (schema-make {:name :sequence, :format :fasta}))
 
 
+(schema-parse "[:name :sequence] [:format :fasta]")
 
-
-
-
-
-
+(schema-parse "[\"pdb_id\" :string]")

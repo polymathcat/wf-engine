@@ -207,31 +207,37 @@ Returns the listener."
     (.setText (:text-id (deref *frame-components*)) (name id))
 
     (.setText (:textarea-in (deref *frame-components*)) (schema-string in))
-    (.setText (:textarea-out (deref *frame-components*)) (schema-string out))))
+    (.setText (:textarea-out (deref *frame-components*)) (schema-string out))
+
+    (.setText (:block1-text-title (deref *frame-components*)) (str title " (1)"))
+    (.setText (:block1-text-id (deref *frame-components*)) (str (name id) "-1"))
+    (.setText (:block1-textarea-in (deref *frame-components*)) (schema-string in))
+    (.setText (:block1-textarea-out (deref *frame-components*)) (schema-string (schema-make {"foobar" :string})))
+
+))
 
 (defn listener-button-split-fold! [event svgcanvas-protocol graph]
   (try
-    (let [;update protocol
-          protocol-old   (deref *execution-protocol*)
-          target-id      :id-fetchentryider
-          block1         (execution-make-protocol-primative :id-test1
-                                       "Test1"
-                                       (schema-make {"pdb_id" :string})
-                                       (schema-make {"foobar" :string}))
-          block2         (execution-make-protocol-primative :id-test2
-                                       "Entry IDer"
-                                       (schema-make {"foobar" :string})
-                                       (schema-make {"protein_id" :string, "fasta_filepath" :string, "pdb_filepath" :string, "dssp_filepath" :string}))
-          protocol-part  (execution-split-protocol-to-fold (get-protocol-by-id protocol-old target-id) block1 block2)
-          protocol-new   (execution-replace-procotol protocol-old target-id protocol-part)
-          ]
+    (let []
+      (let [protocol-old   (deref *execution-protocol*)
+            target-id      (deref *execution-active-id*)                                                                             ;:id-fetchentryider
+            block1         (execution-make-protocol-primative
+                                         (keyword (.getText (:block1-text-title (deref *frame-components*))))                        ;:id-test1
+                                         (.getText (:block1-text-title (deref *frame-components*)))                                  ;"Test1"
+                                         (schema-parse (.getText (:block1-textarea-in (deref *frame-components*))))                  ;(schema-make {"pdb_id" :string})
+                                         (schema-parse (.getText (:block1-textarea-out (deref *frame-components*)))))                ;(schema-make {"foobar" :string}))
+            block2         (execution-make-protocol-primative :id-test2
+                                         "Test2"
+                                         (schema-make {"foobar" :string})
+                                         (schema-make {"protein_id" :string, "fasta_filepath" :string, "pdb_filepath" :string, "dssp_filepath" :string}))
+            protocol-part  (execution-split-protocol-to-fold (get-protocol-by-id protocol-old target-id) block1 block2)
+            protocol-new   (execution-replace-procotol protocol-old target-id protocol-part)
+            ]
 
-          (reset! *execution-protocol* protocol-new)
-          (create-and-attach-graph!))
+            (reset! *execution-protocol* protocol-new)
+            (create-and-attach-graph!)))
   (catch Exception e
     (JOptionPane/showMessageDialog nil (str "" (.getMessage e))))))
-
-
 
 
 (defn listener-button-export [event]
@@ -285,6 +291,11 @@ Returns the listener."
                          :textarea-in          (JTextField. "N/A")
                          :textarea-out         (JTextField. "N/A")
 
+                         :block1-text-title           (JTextField. "")
+                         :block1-text-id              (JTextField. "")
+                         :block1-textarea-in          (JTextField. "")
+                         :block1-textarea-out         (JTextField. "")
+
                          :button-split-fold    (JButton. "Split to Fold")
                          }
 
@@ -299,8 +310,6 @@ Returns the listener."
     ;(.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
     (add-action-listener button            on-action svgcanvas-other graph-other)
     (add-action-listener button-export     listener-button-export)
-    ;;;;(add-action-listener button-split-fold #(-button-split-fold* % svgcanvas-other graph-other))
-
 
     ;ONTOLOGY PANEL
     (.setLocation panel-ontology 0 0)
@@ -329,6 +338,7 @@ Returns the listener."
     (.add panel-protocol (:text-title components))
       (.setSize (:text-title components) 100 20)
       (.setLocation (:text-title components) 50 610)
+      (.setEditable (:text-title components) false)
 
      (.add panel-protocol label-id)
       (.setSize label-id 100 20)
@@ -336,20 +346,41 @@ Returns the listener."
      (.add panel-protocol (:text-id components))
       (.setSize (:text-id components) 100 20)
       (.setLocation (:text-id components) 50 635)
+      (.setEditable (:text-id components) false)
 
      (.add panel-protocol label-in)
       (.setSize label-in 200 20)
       (.setLocation label-in 0 660)
      (.add panel-protocol (:textarea-in components))
-      (.setSize (:textarea-in components) 200 20)
+      (.setSize (:textarea-in components) 150 20)
       (.setLocation (:textarea-in components) 50 660)
+      (.setEditable (:textarea-in components) false)
 
      (.add panel-protocol label-out)
       (.setSize label-out 200 20)
       (.setLocation label-out 0 690)
      (.add panel-protocol (:textarea-out components))
-      (.setSize (:textarea-out components) 200 20)
+      (.setSize (:textarea-out components) 150 20)
       (.setLocation (:textarea-out components) 50 690)
+      (.setEditable (:textarea-out components) false)
+
+    ;block1
+    (let [x-shift 200]
+      (.add panel-protocol (:block1-text-title components))
+        (.setSize (:block1-text-title components) 100 20)
+        (.setLocation (:block1-text-title components) (+ 50 x-shift) 610)
+
+       (.add panel-protocol (:block1-text-id components))
+        (.setSize (:block1-text-id components) 100 20)
+        (.setLocation (:block1-text-id components) (+ 50 x-shift) 635)
+
+       (.add panel-protocol (:block1-textarea-in components))
+        (.setSize (:block1-textarea-in components) 150 20)
+        (.setLocation (:block1-textarea-in components) (+ 50 x-shift) 660)
+
+       (.add panel-protocol (:block1-textarea-out components))
+        (.setSize (:block1-textarea-out components) 150 20)
+        (.setLocation (:block1-textarea-out components) (+ 50 x-shift) 690))
 
     (.add panel-protocol button-export)
       (.setSize button-export 100 20)
@@ -357,7 +388,7 @@ Returns the listener."
 
     (.add panel-protocol (:button-split-fold components))
       (.setSize (:button-split-fold components) 100 20)
-      (.setLocation (:button-split-fold components) 400 650)
+      (.setLocation (:button-split-fold components) 375 600)
 
     (.add pane panel-protocol)
 
@@ -408,6 +439,8 @@ Returns the listener."
 ;(JOptionPane/showMessageDialog nil "Hello World")
 
 ;http://stackoverflow.com/questions/1558852/learning-resources-and-tutorials-for-using-the-java-batik-library
+
+
 
 
 
