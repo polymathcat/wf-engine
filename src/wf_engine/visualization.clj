@@ -15,7 +15,7 @@
        (tikkba swing dom core)
        tikkba.utils.xml)
 
-  (:import (javax.swing JFrame JOptionPane JPanel JButton JList BoxLayout SwingUtilities JTextArea JTextField JScrollPane)
+  (:import (javax.swing JFrame JOptionPane JPanel JButton JLabel BoxLayout SwingUtilities JTextArea JTextField JScrollPane)
            (java.awt.event ActionListener MouseListener)
            (java.awt BorderLayout Color)
            java.awt.Component))
@@ -69,7 +69,7 @@
 ;(export sprouts-ontology "simple.svg" :indent "yes")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; ID STRUCTURE INTERFACE
+;;; ID BASE GRAPH EXTRACTION
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn execution-list-ids [protocol]
@@ -146,10 +146,7 @@
       (layout :hierarchical)
       (build)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; VISUALIZATION
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
+;;; testing
 (defn gen-graph []
   (-> (graph)
       (add-node :athena "Athena" :x 10 :y 30)
@@ -163,28 +160,9 @@
       (add-edge :son-zeus-hera :ares :matrimony)
       (build)))
 
-
-(defn *node-listener*
-  [event id]
-
-  (let [title (.Title (.Contents (get-protocol-by-id (deref *execution-protocol*) id)))
-        in    (execution-get-schema-input (get-protocol-by-id (deref *execution-protocol*) id))
-        out   (execution-get-schema-output (get-protocol-by-id (deref *execution-protocol*) id))]
-
-    (.setText (:text-title (deref *frame-components*)) (str "Name: "title))
-    (.setText (:text-id (deref *frame-components*)) (str "ID: "(name id)))
-
-    (.setText (:textarea-in (deref *frame-components*)) (str "In: " (schema-string in)))
-    (.setText (:textarea-out (deref *frame-components*)) (str "Out: "  (schema-string out)))))
-
-(defn insert-node-listeners [graph protocol]
-
-  (reduce (fn [g nodeid]
-              (add-listener g nodeid "click" #(*node-listener* % nodeid)))
-          graph
-          (execution-list-ids protocol)))
-
-;http://stackoverflow.com/questions/1558852/learning-resources-and-tutorials-for-using-the-java-batik-library
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; SWING UTILITY
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; copied from swing utils
 (defn add-action-listener [component f & args]
@@ -197,8 +175,44 @@ Returns the listener."
     (.addActionListener component listener)
     listener))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; GLOBALS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def ^{:dynamic true} *execution-protocol* (atom nil))
+(def ^{:dynamic true} *execution-graph* (atom nil))
+(def ^{:dynamic true} *frame-components* (atom nil))
+(def ^{:dynamic true} *execution-active-id* (atom nil))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; GRAPH LISTENERS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn *node-listener*
+  [event id]
+
+  (reset! *execution-active-id* id)
+
+  ;update GUI
+  (let [title (.Title (.Contents (get-protocol-by-id (deref *execution-protocol*) id)))
+        in    (execution-get-schema-input (get-protocol-by-id (deref *execution-protocol*) id))
+        out   (execution-get-schema-output (get-protocol-by-id (deref *execution-protocol*) id))]
+
+    (.setText (:text-title (deref *frame-components*)) title)
+    (.setText (:text-id (deref *frame-components*)) (name id))
+
+    (.setText (:textarea-in (deref *frame-components*)) (schema-string in))
+    (.setText (:textarea-out (deref *frame-components*)) (schema-string out))))
+
+(defn *listener-button-split-fold* [event]
+  (JOptionPane/showMessageDialog nil "Hello World"))
+
+(defn listener-button-export [event]
+  (export (deref *execution-graph*) "graph.svg" :indent "yes"))
+
+
+;;; testing
 (defn on-action [event svgcanvas graph]
-  ;(JOptionPane/showMessageDialog nil "Hello World")
   (do-batik
    svgcanvas
    (-> graph
@@ -208,9 +222,21 @@ Returns the listener."
 
        )))
 
-(def ^{:dynamic true} *execution-protocol* (atom nil))
-(def ^{:dynamic true} *execution-graph* (atom nil))
-(def ^{:dynamic true} *frame-components* (atom nil))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; GRAPH INTERACTION SET UP
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn insert-node-listeners [graph protocol]
+
+  (reduce (fn [g nodeid]
+              (add-listener g nodeid "click" #(*node-listener* % nodeid)))
+          graph
+          (execution-list-ids protocol)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; VISUALIZATION SET UP
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn create-frame [graph-other execution-svgcanvas]
   (let [frame                (JFrame.)
@@ -220,12 +246,18 @@ Returns the listener."
         panel-protocol       (JPanel.)
 
         button               (JButton. "Unimplemented")
+        button-export    (JButton. "Export Image")
         button-split-fold    (JButton. "Split to Fold")
+
+        label-title (JLabel. "Title:")
+        label-id    (JLabel. "ID:")
+        label-in    (JLabel. "Input:")
+        label-out   (JLabel. "Output:")
 
         components      {:text-title           (JTextField. "N/A")
                          :text-id              (JTextField. "N/A")
-                         :textarea-in          (JTextArea. "N/A")
-                         :textarea-out         (JTextArea. "N/A")}
+                         :textarea-in          (JTextField. "N/A")
+                         :textarea-out         (JTextField. "N/A")}
 
         pane                 (.getContentPane frame)]
 
@@ -235,7 +267,9 @@ Returns the listener."
     (.setLayout pane nil)
     (.setSize frame (+ 1280 16) (+ 720 38)); offset is for window frames.
     ;(.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
-    (add-action-listener button on-action svgcanvas-other graph-other)
+    (add-action-listener button            on-action svgcanvas-other graph-other)
+    (add-action-listener button-export     listener-button-export)
+    (add-action-listener button-split-fold *listener-button-split-fold*)
 
     ;ONTOLOGY PANEL
     (.setLocation panel-ontology 0 0)
@@ -263,21 +297,37 @@ Returns the listener."
       (.setLocation execution-svgcanvas 0 0)
 
     ;bottom
-
+    (.add panel-protocol label-title)
+      (.setSize label-title 100 20)
+      (.setLocation label-title 0 610)
+    (.add panel-protocol (:text-title components))
       (.setSize (:text-title components) 100 20)
-      (.setLocation (:text-title components) 140 610)
+      (.setLocation (:text-title components) 50 610)
 
+     (.add panel-protocol label-id)
+      (.setSize label-id 100 20)
+      (.setLocation label-id 0 635)
      (.add panel-protocol (:text-id components))
       (.setSize (:text-id components) 100 20)
-      (.setLocation (:text-id components) 140 630)
+      (.setLocation (:text-id components) 50 635)
 
+     (.add panel-protocol label-in)
+      (.setSize label-in 200 20)
+      (.setLocation label-in 0 660)
      (.add panel-protocol (:textarea-in components))
       (.setSize (:textarea-in components) 200 20)
-      (.setLocation (:textarea-in components) 140 650)
+      (.setLocation (:textarea-in components) 50 660)
 
+     (.add panel-protocol label-out)
+      (.setSize label-out 200 20)
+      (.setLocation label-out 0 690)
      (.add panel-protocol (:textarea-out components))
       (.setSize (:textarea-out components) 200 20)
-      (.setLocation (:textarea-out components) 140 (+ 650 20))
+      (.setLocation (:textarea-out components) 50 690)
+
+    (.add panel-protocol button-export)
+      (.setSize button-export 100 20)
+      (.setLocation button-export 540 700)
 
     (.add panel-protocol button-split-fold)
       (.setSize button-split-fold 100 20)
@@ -286,9 +336,6 @@ Returns the listener."
     (.add pane panel-protocol)
 
     frame))
-
-
-
 
 
 (defn create-window []
@@ -306,6 +353,11 @@ Returns the listener."
     (SwingUtilities/invokeAndWait
      (fn [] (.setVisible frame true)))))
 
+
 (create-window)
 
-;(JOptionPane/showMessageDialog nil "Hello World")
+;(JOptionPane/showMessageDialog nil "Hello World")
+
+;http://stackoverflow.com/questions/1558852/learning-resources-and-tutorials-for-using-the-java-batik-library
+
+
