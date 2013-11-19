@@ -210,25 +210,29 @@ Returns the listener."
     (.setText (:textarea-out (deref *frame-components*)) (schema-string out))))
 
 (defn listener-button-split-fold! [event svgcanvas-protocol graph]
-  ;(JOptionPane/showMessageDialog nil "Hello World")
+  (try
+    (let [;update protocol
+          protocol-old   (deref *execution-protocol*)
+          target-id      :id-fetchentryider
+          block1         (execution-make-protocol-primative :id-test1
+                                       "Test1"
+                                       (schema-make {"pdb_id" :string})
+                                       (schema-make {"foobar" :string}))
+          block2         (execution-make-protocol-primative :id-test2
+                                       "Entry IDer"
+                                       (schema-make {"foobar" :string})
+                                       (schema-make {"protein_id" :string, "fasta_filepath" :string, "pdb_filepath" :string, "dssp_filepath" :string}))
+          protocol-part  (execution-split-protocol-to-fold (get-protocol-by-id protocol-old target-id) block1 block2)
+          protocol-new   (execution-replace-procotol protocol-old target-id protocol-part)
+          ]
 
-  (let [;update protocol
-        protocol-old   (deref *execution-protocol*)
-        target-id      :id-fetchentryider
-        block1         (execution-make-protocol-primative :id-test1
-                                     "Test1"
-                                     (schema-make {"pdb_id" :string})
-                                     (schema-make {"foobar" :string}))
-        block2         (execution-make-protocol-primative :id-test2
-                                     "Entry IDer"
-                                     (schema-make {"foobar" :string})
-                                     (schema-make {"protein_id" :string, "fasta_filepath" :string, "pdb_filepath" :string, "dssp_filepath" :string}))
-        protocol-part  (execution-split-protocol-to-fold (get-protocol-by-id protocol-old target-id) block1 block2)
-        protocol-new   (execution-replace-procotol protocol-old target-id protocol-part)
-        ]
+          (reset! *execution-protocol* protocol-new)
+          (create-and-attach-graph!))
+  (catch Exception e
+    (JOptionPane/showMessageDialog nil (str "" (.getMessage e))))))
 
-        (reset! *execution-protocol* protocol-new)
-        (create-and-attach-graph!)))
+
+
 
 (defn listener-button-export [event]
   (export (deref *execution-graph*) "graph.svg" :indent "yes"))

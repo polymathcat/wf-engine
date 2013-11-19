@@ -157,6 +157,23 @@
 
 ;top down - split based
 (defn execution-split-protocol-to-fold [protocol block1 block2]
+
+  (cond (not (schema-subset? (execution-get-schema-input block1)
+                             (execution-get-schema-input protocol)))
+          (throw (Exception. "split-protocol-to-fold: Block1 requires data that the original protocol's did not have."))
+
+        (not (schema-subset? (execution-get-schema-input block2)
+                             (execution-get-schema-output block1)))
+          (throw (Exception. "split-protocol-to-fold: Block1 doesn't produce data sufficient for Block2."))
+
+        (not (schema-subset? (execution-get-schema-output protocol)
+                             (execution-get-schema-output block2)))
+          (throw (Exception. "split-protocol-to-fold: Block2 doesn't produce data sufficient to take the original protocol's place."))
+
+        :else
+          (execution-make-protocol-fold (.ID (.Contents protocol)) (.Title (.Contents protocol)) [block1 block2])
+   )
+
   (if (and (schema-subset? (execution-get-schema-input block1)
                            (execution-get-schema-input protocol))
            (schema-subset? (execution-get-schema-input block2)
@@ -240,4 +257,6 @@
       protocol-part (execution-split-protocol-to-fold (get-protocol-by-id protocol-old target-id) block1 block2)
       protocol-new  (execution-replace-procotol protocol-old target-id protocol-part)]
 
-      protocol-new)
+      protocol-new)
+
+
