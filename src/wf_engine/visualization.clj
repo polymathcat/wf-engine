@@ -5,8 +5,8 @@
 (ns wf-engine.visualization
   (:gen-class)
   (:use
-       wf-engine.execution
        wf-engine.database
+       wf-engine.execution
        lacij.model.graph
        lacij.edit.graph
        lacij.edit.dynamic
@@ -203,39 +203,58 @@ Returns the listener."
         in    (execution-get-schema-input (get-protocol-by-id (deref *execution-protocol*) id))
         out   (execution-get-schema-output (get-protocol-by-id (deref *execution-protocol*) id))]
 
+    ;populate block info
     (.setText (:text-title (deref *frame-components*)) title)
     (.setText (:text-id (deref *frame-components*)) (name id))
-
     (.setText (:textarea-in (deref *frame-components*)) (schema-string in))
     (.setText (:textarea-out (deref *frame-components*)) (schema-string out))
 
+    ;set defaults for split.
     (.setText (:block1-text-title (deref *frame-components*)) (str title " (1)"))
     (.setText (:block1-text-id (deref *frame-components*)) (str (name id) "-1"))
     (.setText (:block1-textarea-in (deref *frame-components*)) (schema-string in))
     (.setText (:block1-textarea-out (deref *frame-components*)) (schema-string (schema-make {"foobar" :string})))
 
+    (.setText (:block2-text-title (deref *frame-components*)) (str title " (2)"))
+    (.setText (:block2-text-id (deref *frame-components*)) (str (name id) "-2"))
+    (.setText (:block2-textarea-in (deref *frame-components*)) (schema-string (schema-make {"foobar" :string})))
+    (.setText (:block2-textarea-out (deref *frame-components*)) (schema-string out))
+
 ))
 
-(defn listener-button-split-fold! [event svgcanvas-protocol graph]
+(defn listener-button-split-fold! [event]
   (try
-    (let []
-      (let [protocol-old   (deref *execution-protocol*)
-            target-id      (deref *execution-active-id*)                                                                             ;:id-fetchentryider
-            block1         (execution-make-protocol-primative
-                                         (keyword (.getText (:block1-text-title (deref *frame-components*))))                        ;:id-test1
-                                         (.getText (:block1-text-title (deref *frame-components*)))                                  ;"Test1"
-                                         (schema-parse (.getText (:block1-textarea-in (deref *frame-components*))))                  ;(schema-make {"pdb_id" :string})
-                                         (schema-parse (.getText (:block1-textarea-out (deref *frame-components*)))))                ;(schema-make {"foobar" :string}))
-            block2         (execution-make-protocol-primative :id-test2
-                                         "Test2"
-                                         (schema-make {"foobar" :string})
-                                         (schema-make {"protein_id" :string, "fasta_filepath" :string, "pdb_filepath" :string, "dssp_filepath" :string}))
-            protocol-part  (execution-split-protocol-to-fold (get-protocol-by-id protocol-old target-id) block1 block2)
-            protocol-new   (execution-replace-procotol protocol-old target-id protocol-part)
-            ]
+    (let [block1-id    (keyword (.getText (:block1-text-title (deref *frame-components*))))
+          block1-title (.getText (:block1-text-title (deref *frame-components*)))
+          block1-in    (schema-parse (.getText (:block1-textarea-in (deref *frame-components*))))
+          block1-out   (schema-parse (.getText (:block1-textarea-out (deref *frame-components*))))
+          block2-id    (keyword (.getText (:block2-text-title (deref *frame-components*))))
+          block2-title (.getText (:block2-text-title (deref *frame-components*)))
+          block2-in    (schema-parse (.getText (:block2-textarea-in (deref *frame-components*))))
+          block2-out   (schema-parse (.getText (:block2-textarea-out (deref *frame-components*))))]
 
-            (reset! *execution-protocol* protocol-new)
-            (create-and-attach-graph!)))
+      (cond (execution-contains-id? (deref *execution-protocol*) block1-id)
+         (throw (Exception. "Block1 cannot use an ID already present in the protocol."))
+
+       :else
+              (let [protocol-old   (deref *execution-protocol*)
+                    target-id      (deref *execution-active-id*)                                                                             ;:id-fetchentryider
+                    block1         (execution-make-protocol-primative
+                                                 block1-id               ;:id-test1
+                                                 block1-title            ;"Test1"
+                                                 block1-in               ;(schema-make {"pdb_id" :string})
+                                                 block1-out)             ;(schema-make {"foobar" :string}))
+                    block2         (execution-make-protocol-primative
+                                                 block2-id               ;:id-test2
+                                                 block2-title            ;"Test2"
+                                                 block2-in               ;(schema-make {"foobar" :string})
+                                                 block2-out)             ;(schema-make {"protein_id" :string, "fasta_filepath" :string, "pdb_filepath" :string, "dssp_filepath" :string}))
+                    protocol-part  (execution-split-protocol-to-fold (get-protocol-by-id protocol-old target-id) block1 block2)
+                    protocol-new   (execution-replace-procotol protocol-old target-id protocol-part)
+              ]
+
+              (reset! *execution-protocol* protocol-new)
+              (create-and-attach-graph!))))
   (catch Exception e
     (JOptionPane/showMessageDialog nil (str "" (.getMessage e))))))
 
@@ -296,7 +315,12 @@ Returns the listener."
                          :block1-textarea-in          (JTextField. "")
                          :block1-textarea-out         (JTextField. "")
 
-                         :button-split-fold    (JButton. "Split to Fold")
+                         :block2-text-title           (JTextField. "")
+                         :block2-text-id              (JTextField. "")
+                         :block2-textarea-in          (JTextField. "")
+                         :block2-textarea-out         (JTextField. "")
+
+                         :button-split-fold    (JButton. "To Fold")
                          }
 
         pane                 (.getContentPane frame)]
@@ -382,13 +406,31 @@ Returns the listener."
         (.setSize (:block1-textarea-out components) 150 20)
         (.setLocation (:block1-textarea-out components) (+ 50 x-shift) 690))
 
+    ;block2
+    (let [x-shift 350]
+      (.add panel-protocol (:block2-text-title components))
+        (.setSize (:block2-text-title components) 100 20)
+        (.setLocation (:block2-text-title components) (+ 50 x-shift (+ 50)) 610)
+
+       (.add panel-protocol (:block2-text-id components))
+        (.setSize (:block2-text-id components) 100 20)
+        (.setLocation (:block2-text-id components) (+ 50 x-shift (+ 50)) 635)
+
+       (.add panel-protocol (:block2-textarea-in components))
+        (.setSize (:block2-textarea-in components) 150 20)
+        (.setLocation (:block2-textarea-in components) (+ 50 x-shift) 660)
+
+       (.add panel-protocol (:block2-textarea-out components))
+        (.setSize (:block2-textarea-out components) 150 20)
+        (.setLocation (:block2-textarea-out components) (+ 50 x-shift) 690))
+
     (.add panel-protocol button-export)
       (.setSize button-export 100 20)
       (.setLocation button-export 540 700)
 
     (.add panel-protocol (:button-split-fold components))
-      (.setSize (:button-split-fold components) 100 20)
-      (.setLocation (:button-split-fold components) 375 600)
+      (.setSize (:button-split-fold components) 80 20)
+      (.setLocation (:button-split-fold components) 360 600)
 
     (.add pane panel-protocol)
 
@@ -417,7 +459,7 @@ Returns the listener."
   ;attach to buttons
   (.removeActionListener (:button-split-fold (deref *frame-components*))
                          (first (.getActionListeners (:button-split-fold (deref *frame-components*)))))
-  (add-action-listener (:button-split-fold (deref *frame-components*)) #(listener-button-split-fold! % nil nil))
+  (add-action-listener (:button-split-fold (deref *frame-components*)) #(listener-button-split-fold! %))
 
   nil)
 
@@ -439,6 +481,8 @@ Returns the listener."
 ;(JOptionPane/showMessageDialog nil "Hello World")
 
 ;http://stackoverflow.com/questions/1558852/learning-resources-and-tutorials-for-using-the-java-batik-library
+
+
 
 
 

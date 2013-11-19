@@ -66,7 +66,7 @@
            (= (.ID (.Contents protocol)) id))
 
       (and (execution-block-operator? protocol)
-           (some execution-contains-id? (.Blocks (.Contents protocol))))))
+           (some #(execution-contains-id? % id) (.Blocks (.Contents protocol))))))
 
 ;;; ACCESSORS
 (defn get-protocol-by-id [protocol id]
@@ -258,5 +258,7 @@
       protocol-new  (execution-replace-procotol protocol-old target-id protocol-part)]
 
       protocol-new)
+
+
 
 
