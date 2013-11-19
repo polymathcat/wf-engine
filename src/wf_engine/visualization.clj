@@ -163,10 +163,24 @@
       (add-edge :son-zeus-hera :ares :matrimony)
       (build)))
 
+
+(defn *node-listener*
+  [event id]
+
+  (let [title (.Title (.Contents (get-protocol-by-id (deref *execution-protocol*) id)))
+        in    (execution-get-schema-input (get-protocol-by-id (deref *execution-protocol*) id))
+        out   (execution-get-schema-output (get-protocol-by-id (deref *execution-protocol*) id))]
+
+    (.setText (:text-title (deref *frame-components*)) (str "Name: "title))
+    (.setText (:text-id (deref *frame-components*)) (str "ID: "(name id)))
+
+    (.setText (:textarea-in (deref *frame-components*)) (str "In: " (schema-string in)))
+    (.setText (:textarea-out (deref *frame-components*)) (str "Out: "  (schema-string out)))))
+
 (defn insert-node-listeners [graph protocol]
 
   (reduce (fn [g nodeid]
-              (add-listener g nodeid "click" on-click-listener))
+              (add-listener g nodeid "click" #(*node-listener* % nodeid)))
           graph
           (execution-list-ids protocol)))
 
@@ -183,17 +197,6 @@ Returns the listener."
     (.addActionListener component listener)
     listener))
 
-(defn add-mouse-listener [component mc & args]
-  (let [listener (proxy [MouseListener] []
-                   (mouseClicked  [event] (apply mc event args))
-                   (mouseEntered  [event] (+ 1 1))
-                   (mouseExited   [event] (+ 1 1))
-                   (mousePressed  [event] (+ 1 1))
-                   (mouseReleased [event] (+ 1 1))
-                   )]
-    (.addMouseListener  component listener)
-    listener))
-
 (defn on-action [event svgcanvas graph]
   ;(JOptionPane/showMessageDialog nil "Hello World")
   (do-batik
@@ -204,36 +207,6 @@ Returns the listener."
        (layout :hierarchical)
 
        )))
-
-(defn gui-action-selected-id [event list]
-  ;(JOptionPane/showMessageDialog nil "Hello World")
-  (let [id    (first (.getSelectedValues list))
-        title (.Title (.Contents (get-protocol-by-id (deref *execution-protocol*) id)))
-        in    (execution-get-schema-input (get-protocol-by-id (deref *execution-protocol*) id))
-        out   (execution-get-schema-output (get-protocol-by-id (deref *execution-protocol*) id))]
-
-    (.setText (:text-title (deref *frame-components*)) (str "Name: "title))
-    (.setText (:text-id (deref *frame-components*)) (str "ID: "(name id)))
-
-    (.setText (:textarea-in (deref *frame-components*)) (str "In: " (schema-string in)))
-    (.setText (:textarea-out (deref *frame-components*)) (str "Out: "  (schema-string out)))
-
-))
-
-(defn on-click-listener
-  [event]
-  (let [g (deref *execution-graph*)
-        svgcanvas (:svgcanvas g)
-        nodeid (gensym "appolon")]
-    (do-batik
-     svgcanvas
-     (reset! *execution-graph*
-             (-> g
-                 (add-node! nodeid "Appolon" :x (rand-int 600) :y (rand-int 600))
-                 ;(add-node-styles! :clickme :fill (random-color))
-                 ;(add-edge! (gensym "appolon-clickme") nodeid :clickme)
-
-                 )))))
 
 (def ^{:dynamic true} *execution-protocol* (atom nil))
 (def ^{:dynamic true} *execution-graph* (atom nil))
@@ -248,8 +221,6 @@ Returns the listener."
 
         button               (JButton. "Unimplemented")
         button-split-fold    (JButton. "Split to Fold")
-        list-nodes           (JList.)
-        ;scrollpane-nodes     (JScrollPane. list-nodes)
 
         components      {:text-title           (JTextField. "N/A")
                          :text-id              (JTextField. "N/A")
@@ -260,14 +231,11 @@ Returns the listener."
 
     (reset! *frame-components* components)
 
-
-
     ;set up main JFrame
     (.setLayout pane nil)
     (.setSize frame (+ 1280 16) (+ 720 38)); offset is for window frames.
     ;(.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
     (add-action-listener button on-action svgcanvas-other graph-other)
-    (add-mouse-listener list-nodes gui-action-selected-id list-nodes)
 
     ;ONTOLOGY PANEL
     (.setLocation panel-ontology 0 0)
@@ -295,12 +263,7 @@ Returns the listener."
       (.setLocation execution-svgcanvas 0 0)
 
     ;bottom
-    (.add panel-protocol list-nodes)
-      (.setSize list-nodes 80 90)
-      (.setLocation list-nodes 0 610)
-      (.setListData list-nodes (to-array (execution-list-ids (deref *execution-protocol*))))
 
-    (.add panel-protocol (:text-title components))
       (.setSize (:text-title components) 100 20)
       (.setLocation (:text-title components) 140 610)
 
@@ -343,4 +306,6 @@ Returns the listener."
     (SwingUtilities/invokeAndWait
      (fn [] (.setVisible frame true)))))
 
-(create-window)
+(create-window)
+
+;(JOptionPane/showMessageDialog nil "Hello World")
