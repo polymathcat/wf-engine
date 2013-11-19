@@ -121,6 +121,13 @@
                                      :square
                                      :circle)
 
+                          :style (cond (execution-block-fold? active-protocol)
+                                         {:fill "#00CCFF"}
+                                       (execution-block-mapclone? active-protocol)
+                                         {:fill "#99F893"}
+                                       :else
+                                         {:fill "#FFFF00"})
+
                           ;node width and height
                           :width (if (execution-block-primative? active-protocol)
                                      70
@@ -190,7 +197,7 @@ Returns the listener."
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; GRAPH LISTENERS
+;;; GUI STATE UPDATE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn gui-populate-block-info []
@@ -215,6 +222,11 @@ Returns the listener."
               (.setText (:text-id components) (name id))
               (.setText (:textarea-in components) (schema-string in))
               (.setText (:textarea-out components) (schema-string out))))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; GRAPH LISTENERS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn node-listener!
   [event id]
@@ -253,24 +265,18 @@ Returns the listener."
           block2-out   (schema-parse (.getText (:block2-textarea-out (deref *frame-components*))))]
 
       (cond (execution-contains-id? (deref *execution-protocol*) block1-id)
-         (throw (Exception. "Block1 cannot use an ID already present in the protocol."))
+              (throw (Exception. "Block1 cannot use an ID already present in the protocol."))
 
-       :else
+            (execution-contains-id? (deref *execution-protocol*) block1-id)
+              (throw (Exception. "Block1 cannot use an ID already present in the protocol."))
+
+            :else
               (let [protocol-old   (deref *execution-protocol*)
                     target-id      (deref *execution-active-id*)                                                                             ;:id-fetchentryider
-                    block1         (execution-make-protocol-primative
-                                                 block1-id               ;:id-test1
-                                                 block1-title            ;"Test1"
-                                                 block1-in               ;(schema-make {"pdb_id" :string})
-                                                 block1-out)             ;(schema-make {"foobar" :string}))
-                    block2         (execution-make-protocol-primative
-                                                 block2-id               ;:id-test2
-                                                 block2-title            ;"Test2"
-                                                 block2-in               ;(schema-make {"foobar" :string})
-                                                 block2-out)             ;(schema-make {"protein_id" :string, "fasta_filepath" :string, "pdb_filepath" :string, "dssp_filepath" :string}))
+                    block1         (execution-make-protocol-primative block1-id block1-title block1-in block1-out)
+                    block2         (execution-make-protocol-primative block2-id block2-title block2-in block2-out)
                     protocol-part  (execution-split-protocol-to-fold (get-protocol-by-id protocol-old target-id) block1 block2)
-                    protocol-new   (execution-replace-procotol protocol-old target-id protocol-part)
-              ]
+                    protocol-new   (execution-replace-procotol protocol-old target-id protocol-part)]
 
               (reset! *execution-protocol* protocol-new)
 
