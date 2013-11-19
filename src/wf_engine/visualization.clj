@@ -271,6 +271,7 @@ Returns the listener."
 
 ))
 
+(declare create-and-attach-graph!)
 (defn listener-button-split-fold! [event]
   (try
     (let [block1-id    (keyword (.getText (:block1-text-id (deref *frame-components*))))
@@ -377,7 +378,7 @@ Returns the listener."
     ;set up main JFrame
     (.setLayout pane nil)
     (.setSize frame (+ 1280 16) (+ 720 38)); offset is for window frames.
-    ;(.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
+    (.setDefaultCloseOperation frame JFrame/EXIT_ON_CLOSE)
     (add-action-listener button            on-action svgcanvas-other graph-other)
     (add-action-listener button-export     listener-button-export)
 
