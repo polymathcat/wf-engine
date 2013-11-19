@@ -213,10 +213,23 @@ Returns the listener."
 
 ))
 
-(defn create-frame [graph-other graph-protocol]
-  (let [frame                (JFrame.)
+(defn on-click-listener
+  [event]
+  (let [g (deref *execution-graph*)
+        svgcanvas (:svgcanvas g)
+        nodeid (gensym "appolon")]
+    (do-batik
+     svgcanvas
+     (reset! *execution-graph*
+             (-> g
+                 (add-node! nodeid "Appolon" :x (rand-int 600) :y (rand-int 600))
+                 ;(add-node-styles! :clickme :fill (random-color))
+                 ;(add-edge! (gensym "appolon-clickme") nodeid :clickme)
 
-        svgcanvas-protocol   (:svgcanvas graph-protocol)
+                 )))))
+
+(defn create-frame [graph-other execution-svgcanvas]
+  (let [frame                (JFrame.)
         svgcanvas-other      (:svgcanvas graph-other)
 
         panel-ontology       (JPanel.)
@@ -262,9 +275,9 @@ Returns the listener."
     (.setLayout panel-protocol nil)
 
     ;top
-    (.add panel-protocol svgcanvas-protocol)
-      (.setSize svgcanvas-protocol 640 600)
-      (.setLocation svgcanvas-protocol 0 0)
+    (.add panel-protocol execution-svgcanvas)
+      (.setSize execution-svgcanvas 640 600)
+      (.setLocation execution-svgcanvas 0 0)
 
     ;bottom
     (.add panel-protocol list-nodes)
@@ -302,14 +315,15 @@ Returns the listener."
 (defn create-window []
 
   (reset! *execution-protocol* (build-sprouts-execution))
-  (let [
-        ;graph-other    (second sprouts-ontology)
+  (let [;graph-other    (second sprouts-ontology)
         graph-other     (gen-graph)
         graph-protocol  (build-execution-graph (deref *execution-protocol*))
-        frame           (create-frame graph-other graph-protocol)]
+        frame           (create-frame graph-other
+                                      (:svgcanvas graph-protocol))
+        graph-protocol  (add-listener graph-protocol :fold-1 "click" on-click-listener)
+        ]
 
-
-    (reset! *execution-graph*    graph-protocol)
+    (reset! *execution-graph* graph-protocol)
     (SwingUtilities/invokeAndWait
      (fn [] (.setVisible frame true)))))
 
