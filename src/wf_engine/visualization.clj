@@ -194,14 +194,16 @@ Returns the listener."
    (-> graph
        (add-node! :appolon "Appolon" :x 50 :y 350)
        (add-edge! :appolon-athena :appolon :athena)
+       (layout :hierarchical)
+
        )))
 
-(defn gui-action-selected-id [event protocol list text-title text-id textarea-in textarea-out]
+(defn gui-action-selected-id [event list text-title text-id textarea-in textarea-out]
   ;(JOptionPane/showMessageDialog nil "Hello World")
   (let [id    (first (.getSelectedValues list))
-        title (.Title (.Contents (get-protocol-by-id protocol id)))
-        in    (execution-get-schema-input (get-protocol-by-id protocol id))
-        out   (execution-get-schema-output (get-protocol-by-id protocol id))]
+        title (.Title (.Contents (get-protocol-by-id (deref *execution-protocol*) id)))
+        in    (execution-get-schema-input (get-protocol-by-id (deref *execution-protocol*) id))
+        out   (execution-get-schema-output (get-protocol-by-id (deref *execution-protocol*) id))]
 
     (.setText text-title (str "Name: "title))
     (.setText text-id (str "ID: "(name id)))
@@ -211,7 +213,7 @@ Returns the listener."
 
 ))
 
-(defn create-frame [graph-other protocol graph-protocol]
+(defn create-frame [graph-other graph-protocol]
   (let [frame                (JFrame.)
 
         svgcanvas-protocol   (:svgcanvas graph-protocol)
@@ -221,6 +223,7 @@ Returns the listener."
         panel-protocol       (JPanel.)
 
         button               (JButton. "Unimplemented")
+        button-split-fold    (JButton. "Split to Fold")
         list-nodes           (JList.)
         ;scrollpane-nodes     (JScrollPane. list-nodes)
 
@@ -236,7 +239,7 @@ Returns the listener."
     (.setSize frame (+ 1280 16) (+ 720 38)); offset is for window frames.
     ;(.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
     (add-action-listener button on-action svgcanvas-other graph-other)
-    (add-mouse-listener list-nodes gui-action-selected-id protocol list-nodes text-title text-id textarea-in textarea-out)
+    (add-mouse-listener list-nodes gui-action-selected-id list-nodes text-title text-id textarea-in textarea-out)
 
     ;ONTOLOGY PANEL
     (.setLocation panel-ontology 0 0)
@@ -246,9 +249,11 @@ Returns the listener."
     (.add panel-ontology svgcanvas-other)
      (.setSize svgcanvas-other 640 600)
      (.setLocation svgcanvas-other 0 0)
+
     (.add panel-ontology button)
       (.setSize button 100 20)
       (.setLocation button 100 650)
+
     (.add pane panel-ontology)
 
     ;PROTOCOL PANEL
@@ -263,17 +268,9 @@ Returns the listener."
 
     ;bottom
     (.add panel-protocol list-nodes)
-
       (.setSize list-nodes 80 90)
       (.setLocation list-nodes 0 610)
-
-      (.setListData list-nodes (to-array (execution-list-ids protocol)))
-      ;(.revalidate list-nodes)
-
-    ;(.add panel-protocol scrollpane-nodes)
-    ;(.add (.getViewport scrollpane-nodes) list-nodes)
-    ;(.setVisible scrollpane-nodes true)
-
+      (.setListData list-nodes (to-array (execution-list-ids (deref *execution-protocol*))))
 
     (.add panel-protocol text-title)
       (.setSize text-title 100 20)
@@ -291,25 +288,29 @@ Returns the listener."
       (.setSize textarea-out 200 20)
       (.setLocation textarea-out 140 (+ 650 20))
 
-
+    (.add panel-protocol button-split-fold)
+      (.setSize button-split-fold 100 20)
+      (.setLocation button-split-fold 400 650)
 
     (.add pane panel-protocol)
 
     frame))
 
+(def ^{:dynamic true} *execution-protocol* (atom nil))
+(def ^{:dynamic true} *execution-graph* (atom nil))
+
 (defn create-window []
-  (let [graph-other    (second sprouts-ontology)
-        ;graph-other     (gen-graph)
-        protocol        (build-sprouts-execution)
-        graph-protocol  (build-execution-graph protocol)
-        ;doc            (:xmldoc agraph-protocol)
-        frame           (create-frame graph-other protocol graph-protocol)]
+
+  (reset! *execution-protocol* (build-sprouts-execution))
+  (let [
+        ;graph-other    (second sprouts-ontology)
+        graph-other     (gen-graph)
+        graph-protocol  (build-execution-graph (deref *execution-protocol*))
+        frame           (create-frame graph-other graph-protocol)]
+
+
+    (reset! *execution-graph*    graph-protocol)
     (SwingUtilities/invokeAndWait
      (fn [] (.setVisible frame true)))))
 
-;(create-window)
-
-
-
-
-
+(create-window)
