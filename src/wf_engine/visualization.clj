@@ -210,7 +210,7 @@ Returns the listener."
     (.setText (:textarea-out (deref *frame-components*)) (schema-string out))))
 
 (defn listener-button-split-fold! [event svgcanvas-protocol graph]
-  (JOptionPane/showMessageDialog nil "Hello World")
+  ;(JOptionPane/showMessageDialog nil "Hello World")
 
   (let [;update protocol
         protocol-old   (deref *execution-protocol*)
@@ -236,7 +236,7 @@ Returns the listener."
 
         (finish-and-attach-svgcanvas!)
 
-        nil)
+        )
 
 
 
@@ -388,9 +388,11 @@ Returns the listener."
       (.setSize (deref *execution-svgcanvas*) 640 600)
       (.setLocation (deref *execution-svgcanvas*) 0 0)
 
-  ;TODO: clear existing listener?
+  (.removeActionListener (:button-split-fold (deref *frame-components*))
+                         (first (.getActionListeners (:button-split-fold (deref *frame-components*)))))
   (add-action-listener (:button-split-fold (deref *frame-components*)) #(listener-button-split-fold! % nil nil))
 
+  nil
 )
 
 (defn create-window []
@@ -401,7 +403,6 @@ Returns the listener."
   (let [;graph-other    (second sprouts-ontology)
         graph-other     (gen-graph)
         frame           (create-frame graph-other)
-        ;graph-protocol  (insert-node-listeners graph-protocol (deref *execution-protocol*))
         ]
     (finish-and-attach-svgcanvas!)
     (SwingUtilities/invokeAndWait
@@ -413,5 +414,7 @@ Returns the listener."
 ;(JOptionPane/showMessageDialog nil "Hello World")
 
 ;http://stackoverflow.com/questions/1558852/learning-resources-and-tutorials-for-using-the-java-batik-library
+
+
 
 
