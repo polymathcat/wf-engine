@@ -225,22 +225,10 @@ Returns the listener."
                                      (schema-make {"protein_id" :string, "fasta_filepath" :string, "pdb_filepath" :string, "dssp_filepath" :string}))
         protocol-part  (execution-split-protocol-to-fold (get-protocol-by-id protocol-old target-id) block1 block2)
         protocol-new   (execution-replace-procotol protocol-old target-id protocol-part)
-
-        ;update visualization
-        graph-new      (build-execution-graph (deref *execution-protocol*))
-        ;graph-new      (insert-node-listeners graph-new (deref *execution-protocol*))
         ]
 
         (reset! *execution-protocol* protocol-new)
-        (reset! *execution-graph* graph-new)
-
-        (finish-and-attach-svgcanvas!)
-
-        )
-
-
-
-    )
+        (create-and-attach-graph!)))
 
 (defn listener-button-export [event]
   (export (deref *execution-graph*) "graph.svg" :indent "yes"))
@@ -371,8 +359,11 @@ Returns the listener."
 
     frame))
 
-(defn finish-and-attach-svgcanvas! []
-  ;remove svgcanvas
+(defn create-and-attach-graph! []
+
+  (reset! *execution-graph* (build-execution-graph (deref *execution-protocol*)))
+
+  ;remove any existing svgcanvas
   (if (nil? (deref *execution-svgcanvas*))
       nil
       (.remove (deref *container-svgcanvas*) (deref *execution-svgcanvas*)))
@@ -388,23 +379,22 @@ Returns the listener."
       (.setSize (deref *execution-svgcanvas*) 640 600)
       (.setLocation (deref *execution-svgcanvas*) 0 0)
 
+  ;attach to buttons
   (.removeActionListener (:button-split-fold (deref *frame-components*))
                          (first (.getActionListeners (:button-split-fold (deref *frame-components*)))))
   (add-action-listener (:button-split-fold (deref *frame-components*)) #(listener-button-split-fold! % nil nil))
 
-  nil
-)
+  nil)
 
 (defn create-window []
 
   (reset! *execution-protocol* (build-sprouts-execution))
-  (reset! *execution-graph* (build-execution-graph (deref *execution-protocol*)))
 
   (let [;graph-other    (second sprouts-ontology)
         graph-other     (gen-graph)
         frame           (create-frame graph-other)
         ]
-    (finish-and-attach-svgcanvas!)
+    (create-and-attach-graph!)
     (SwingUtilities/invokeAndWait
      (fn [] (.setVisible frame true)))))
 
