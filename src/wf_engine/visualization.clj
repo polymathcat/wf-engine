@@ -66,7 +66,6 @@
             ;(layout :naive)
             (build))))
 
-;(export sprouts-ontology "simple.svg" :indent "yes")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ID BASE GRAPH EXTRACTION
@@ -101,6 +100,7 @@
              (map execution-list-edges (.Blocks (.Contents protocol))))))
 
   )
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; LACIJ GRAPH GENERATION
@@ -160,6 +160,7 @@
       (add-edge :son-zeus-hera :ares :matrimony)
       (build)))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; SWING UTILITY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -175,20 +176,24 @@ Returns the listener."
     (.addActionListener component listener)
     listener))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; GLOBALS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def ^{:dynamic true} *execution-protocol* (atom nil))
 (def ^{:dynamic true} *execution-graph* (atom nil))
+(def ^{:dynamic true} *execution-svgcanvas* (atom nil))
 (def ^{:dynamic true} *frame-components* (atom nil))
+(def ^{:dynamic true} *container-svgcanvas* (atom nil))
 (def ^{:dynamic true} *execution-active-id* (atom nil))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; GRAPH LISTENERS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn *node-listener*
+(defn node-listener!
   [event id]
 
   (reset! *execution-active-id* id)
@@ -204,8 +209,38 @@ Returns the listener."
     (.setText (:textarea-in (deref *frame-components*)) (schema-string in))
     (.setText (:textarea-out (deref *frame-components*)) (schema-string out))))
 
-(defn *listener-button-split-fold* [event]
-  (JOptionPane/showMessageDialog nil "Hello World"))
+(defn listener-button-split-fold! [event svgcanvas-protocol graph]
+  (JOptionPane/showMessageDialog nil "Hello World")
+
+  (let [;update protocol
+        protocol-old   (deref *execution-protocol*)
+        target-id      :id-fetchentryider
+        block1         (execution-make-protocol-primative :id-test1
+                                     "Test1"
+                                     (schema-make {"pdb_id" :string})
+                                     (schema-make {"foobar" :string}))
+        block2         (execution-make-protocol-primative :id-test2
+                                     "Entry IDer"
+                                     (schema-make {"foobar" :string})
+                                     (schema-make {"protein_id" :string, "fasta_filepath" :string, "pdb_filepath" :string, "dssp_filepath" :string}))
+        protocol-part  (execution-split-protocol-to-fold (get-protocol-by-id protocol-old target-id) block1 block2)
+        protocol-new   (execution-replace-procotol protocol-old target-id protocol-part)
+
+        ;update visualization
+        graph-new      (build-execution-graph (deref *execution-protocol*))
+        ;graph-new      (insert-node-listeners graph-new (deref *execution-protocol*))
+        ]
+
+        (reset! *execution-protocol* protocol-new)
+        (reset! *execution-graph* graph-new)
+
+        (finish-and-attach-svgcanvas!)
+
+        nil)
+
+
+
+    )
 
 (defn listener-button-export [event]
   (export (deref *execution-graph*) "graph.svg" :indent "yes"))
@@ -218,9 +253,9 @@ Returns the listener."
    (-> graph
        (add-node! :appolon "Appolon" :x 50 :y 350)
        (add-edge! :appolon-athena :appolon :athena)
-       (layout :hierarchical)
 
        )))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; GRAPH INTERACTION SET UP
@@ -229,7 +264,7 @@ Returns the listener."
 (defn insert-node-listeners [graph protocol]
 
   (reduce (fn [g nodeid]
-              (add-listener g nodeid "click" #(*node-listener* % nodeid)))
+              (add-listener g nodeid "click" #(node-listener! % nodeid)))
           graph
           (execution-list-ids protocol)))
 
@@ -238,7 +273,7 @@ Returns the listener."
 ;;; VISUALIZATION SET UP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn create-frame [graph-other execution-svgcanvas]
+(defn create-frame [graph-other]
   (let [frame                (JFrame.)
         svgcanvas-other      (:svgcanvas graph-other)
 
@@ -246,8 +281,7 @@ Returns the listener."
         panel-protocol       (JPanel.)
 
         button               (JButton. "Unimplemented")
-        button-export    (JButton. "Export Image")
-        button-split-fold    (JButton. "Split to Fold")
+        button-export        (JButton. "Save Image")
 
         label-title (JLabel. "Title:")
         label-id    (JLabel. "ID:")
@@ -257,11 +291,15 @@ Returns the listener."
         components      {:text-title           (JTextField. "N/A")
                          :text-id              (JTextField. "N/A")
                          :textarea-in          (JTextField. "N/A")
-                         :textarea-out         (JTextField. "N/A")}
+                         :textarea-out         (JTextField. "N/A")
+
+                         :button-split-fold    (JButton. "Split to Fold")
+                         }
 
         pane                 (.getContentPane frame)]
 
     (reset! *frame-components* components)
+    (reset! *container-svgcanvas* panel-protocol)
 
     ;set up main JFrame
     (.setLayout pane nil)
@@ -269,7 +307,8 @@ Returns the listener."
     ;(.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
     (add-action-listener button            on-action svgcanvas-other graph-other)
     (add-action-listener button-export     listener-button-export)
-    (add-action-listener button-split-fold *listener-button-split-fold*)
+    ;;;;(add-action-listener button-split-fold #(-button-split-fold* % svgcanvas-other graph-other))
+
 
     ;ONTOLOGY PANEL
     (.setLocation panel-ontology 0 0)
@@ -290,11 +329,6 @@ Returns the listener."
     (.setLocation panel-protocol 640 0)
     (.setSize panel-protocol 640 720)
     (.setLayout panel-protocol nil)
-
-    ;top
-    (.add panel-protocol execution-svgcanvas)
-      (.setSize execution-svgcanvas 640 600)
-      (.setLocation execution-svgcanvas 0 0)
 
     ;bottom
     (.add panel-protocol label-title)
@@ -329,27 +363,47 @@ Returns the listener."
       (.setSize button-export 100 20)
       (.setLocation button-export 540 700)
 
-    (.add panel-protocol button-split-fold)
-      (.setSize button-split-fold 100 20)
-      (.setLocation button-split-fold 400 650)
+    (.add panel-protocol (:button-split-fold components))
+      (.setSize (:button-split-fold components) 100 20)
+      (.setLocation (:button-split-fold components) 400 650)
 
     (.add pane panel-protocol)
 
     frame))
 
+(defn finish-and-attach-svgcanvas! []
+  ;remove svgcanvas
+  (if (nil? (deref *execution-svgcanvas*))
+      nil
+      (.remove (deref *container-svgcanvas*) (deref *execution-svgcanvas*)))
+
+  ;there is already a partial svgcanvas assoicated with the graph, must finish it.
+  (reset! *execution-graph* (insert-node-listeners (deref *execution-graph*) (deref *execution-protocol*)))
+
+  ;set new svgcanvas
+  (reset! *execution-svgcanvas* (:svgcanvas (deref *execution-graph*)))
+
+  ;lock it into the GUI
+    (.add (deref *container-svgcanvas*) (deref *execution-svgcanvas*))
+      (.setSize (deref *execution-svgcanvas*) 640 600)
+      (.setLocation (deref *execution-svgcanvas*) 0 0)
+
+  ;TODO: clear existing listener?
+  (add-action-listener (:button-split-fold (deref *frame-components*)) #(listener-button-split-fold! % nil nil))
+
+)
 
 (defn create-window []
 
   (reset! *execution-protocol* (build-sprouts-execution))
+  (reset! *execution-graph* (build-execution-graph (deref *execution-protocol*)))
+
   (let [;graph-other    (second sprouts-ontology)
         graph-other     (gen-graph)
-        graph-protocol  (build-execution-graph (deref *execution-protocol*))
-        frame           (create-frame graph-other
-                                      (:svgcanvas graph-protocol))
-        graph-protocol  (insert-node-listeners graph-protocol (deref *execution-protocol*))
+        frame           (create-frame graph-other)
+        ;graph-protocol  (insert-node-listeners graph-protocol (deref *execution-protocol*))
         ]
-
-    (reset! *execution-graph* graph-protocol)
+    (finish-and-attach-svgcanvas!)
     (SwingUtilities/invokeAndWait
      (fn [] (.setVisible frame true)))))
 
