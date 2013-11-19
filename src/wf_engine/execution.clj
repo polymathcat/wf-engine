@@ -16,6 +16,10 @@
                      Type
                      Contents])
 
+(defn make-protocol [layer type contents]
+  (Protocol. layer
+             type
+             contents))
 
 (defrecord ExecutionPrimative [ID
                                Title
@@ -258,6 +262,12 @@
       protocol-new  (execution-replace-procotol protocol-old target-id protocol-part)]
 
       protocol-new)
+
+
+
+
+
+
 
 
 

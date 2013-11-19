@@ -7,6 +7,7 @@
   (:use
        wf-engine.database
        wf-engine.execution
+       wf-engine.data
        lacij.model.graph
        lacij.edit.graph
        lacij.edit.dynamic
@@ -68,7 +69,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; ID BASE GRAPH EXTRACTION
+;;; EXECUTION GRAPH EXTRACTION
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn execution-list-ids [protocol]
@@ -524,11 +525,13 @@ Returns the listener."
      (fn [] (.setVisible frame true)))))
 
 
-(create-window)
+;(create-window)
 
 ;(JOptionPane/showMessageDialog nil "Hello World")
 
 ;http://stackoverflow.com/questions/1558852/learning-resources-and-tutorials-for-using-the-java-batik-library
+
+
 
 
 
