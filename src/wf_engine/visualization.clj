@@ -163,6 +163,13 @@
       (add-edge :son-zeus-hera :ares :matrimony)
       (build)))
 
+(defn insert-node-listeners [graph protocol]
+
+  (reduce (fn [g nodeid]
+              (add-listener g nodeid "click" on-click-listener))
+          graph
+          (execution-list-ids protocol)))
+
 ;http://stackoverflow.com/questions/1558852/learning-resources-and-tutorials-for-using-the-java-batik-library
 
 ;; copied from swing utils
@@ -198,18 +205,18 @@ Returns the listener."
 
        )))
 
-(defn gui-action-selected-id [event list text-title text-id textarea-in textarea-out]
+(defn gui-action-selected-id [event list]
   ;(JOptionPane/showMessageDialog nil "Hello World")
   (let [id    (first (.getSelectedValues list))
         title (.Title (.Contents (get-protocol-by-id (deref *execution-protocol*) id)))
         in    (execution-get-schema-input (get-protocol-by-id (deref *execution-protocol*) id))
         out   (execution-get-schema-output (get-protocol-by-id (deref *execution-protocol*) id))]
 
-    (.setText text-title (str "Name: "title))
-    (.setText text-id (str "ID: "(name id)))
+    (.setText (:text-title (deref *frame-components*)) (str "Name: "title))
+    (.setText (:text-id (deref *frame-components*)) (str "ID: "(name id)))
 
-    (.setText textarea-in (str "In: " (schema-string in)))
-    (.setText textarea-out (str "Out: "  (schema-string out)))
+    (.setText (:textarea-in (deref *frame-components*)) (str "In: " (schema-string in)))
+    (.setText (:textarea-out (deref *frame-components*)) (str "Out: "  (schema-string out)))
 
 ))
 
@@ -228,6 +235,10 @@ Returns the listener."
 
                  )))))
 
+(def ^{:dynamic true} *execution-protocol* (atom nil))
+(def ^{:dynamic true} *execution-graph* (atom nil))
+(def ^{:dynamic true} *frame-components* (atom nil))
+
 (defn create-frame [graph-other execution-svgcanvas]
   (let [frame                (JFrame.)
         svgcanvas-other      (:svgcanvas graph-other)
@@ -240,19 +251,23 @@ Returns the listener."
         list-nodes           (JList.)
         ;scrollpane-nodes     (JScrollPane. list-nodes)
 
-        text-title           (JTextField. "N/A")
-        text-id              (JTextField. "N/A")
-        textarea-in          (JTextArea. "N/A")
-        textarea-out         (JTextArea. "N/A")
+        components      {:text-title           (JTextField. "N/A")
+                         :text-id              (JTextField. "N/A")
+                         :textarea-in          (JTextArea. "N/A")
+                         :textarea-out         (JTextArea. "N/A")}
 
         pane                 (.getContentPane frame)]
+
+    (reset! *frame-components* components)
+
+
 
     ;set up main JFrame
     (.setLayout pane nil)
     (.setSize frame (+ 1280 16) (+ 720 38)); offset is for window frames.
     ;(.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
     (add-action-listener button on-action svgcanvas-other graph-other)
-    (add-mouse-listener list-nodes gui-action-selected-id list-nodes text-title text-id textarea-in textarea-out)
+    (add-mouse-listener list-nodes gui-action-selected-id list-nodes)
 
     ;ONTOLOGY PANEL
     (.setLocation panel-ontology 0 0)
@@ -285,21 +300,21 @@ Returns the listener."
       (.setLocation list-nodes 0 610)
       (.setListData list-nodes (to-array (execution-list-ids (deref *execution-protocol*))))
 
-    (.add panel-protocol text-title)
-      (.setSize text-title 100 20)
-      (.setLocation text-title 140 610)
+    (.add panel-protocol (:text-title components))
+      (.setSize (:text-title components) 100 20)
+      (.setLocation (:text-title components) 140 610)
 
-     (.add panel-protocol text-id)
-      (.setSize text-id 100 20)
-      (.setLocation text-id 140 630)
+     (.add panel-protocol (:text-id components))
+      (.setSize (:text-id components) 100 20)
+      (.setLocation (:text-id components) 140 630)
 
-     (.add panel-protocol textarea-in)
-      (.setSize textarea-in 200 20)
-      (.setLocation textarea-in 140 650)
+     (.add panel-protocol (:textarea-in components))
+      (.setSize (:textarea-in components) 200 20)
+      (.setLocation (:textarea-in components) 140 650)
 
-     (.add panel-protocol textarea-out)
-      (.setSize textarea-out 200 20)
-      (.setLocation textarea-out 140 (+ 650 20))
+     (.add panel-protocol (:textarea-out components))
+      (.setSize (:textarea-out components) 200 20)
+      (.setLocation (:textarea-out components) 140 (+ 650 20))
 
     (.add panel-protocol button-split-fold)
       (.setSize button-split-fold 100 20)
@@ -309,18 +324,9 @@ Returns the listener."
 
     frame))
 
-(def ^{:dynamic true} *execution-protocol* (atom nil))
-(def ^{:dynamic true} *execution-graph* (atom nil))
-
-(defn insert-node-listeners [graph protocol]
-
-  (reduce (fn [g nodeid]
-              (add-listener g nodeid "click" on-click-listener))
-          graph
-          (execution-list-ids protocol))
 
 
- )
+
 
 (defn create-window []
 
