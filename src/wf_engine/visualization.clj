@@ -88,18 +88,35 @@
   is connected to."
 
   (if (execution-block-primative? protocol)
+
+    ;blocks can't have out going edges
     (list)
 
     ;otherwise is an operator
     (reduce concat
             (cons
-             (map #(vector (.ID (.Contents protocol)) (.ID (.Contents %)))
-                  (.Blocks (.Contents protocol)))
+               ;produce local edges
+                 (cond ;fold - have to  label edges by order
+                       (execution-block-fold? protocol)
+                       (first (reduce (fn [state active-protocol]
+                                          (let [edge (vector (.ID (.Contents protocol))
+                                                             (.ID (.Contents active-protocol))
+                                                             (str (second state)))]
+                                            (list (conj (first state) edge)
+                                                  (inc (second state)))))
+                                      (list (list) 0)
+                                      (.Blocks (.Contents protocol))))
 
+                     ;map clone - don't need to label edges
+                     (execution-block-mapclone? protocol)
+                       (map #(vector (.ID (.Contents protocol)) (.ID (.Contents %)) "")
+                            (.Blocks (.Contents protocol)))
 
-             (map execution-list-edges (.Blocks (.Contents protocol))))))
+                     :else
+                       (throw (Exception. "execution-list-edges: Don't know how to build edges for operator found.")))
 
-  )
+               ;recursive step
+               (map execution-list-edges (.Blocks (.Contents protocol)))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -126,7 +143,7 @@
                                        (execution-block-mapclone? active-protocol)
                                          {:fill "#99F893"}
                                        :else
-                                         {:fill "#FFFF00"})
+                                         {:fill "#FFF5A2"})
 
                           ;node width and height
                           :width (if (execution-block-primative? active-protocol)
@@ -140,9 +157,9 @@
 
 ;modified from lacij examples
 (defn add-edges [g edges protocol]
-  (reduce (fn [g [src dst]]
+  (reduce (fn [g [src dst label]]
             (let [id (keyword (str (name src) "-" (name dst)))]
-             (add-edge g id src dst)))
+             (add-edge g id src dst label)))
           g
           edges))
 
