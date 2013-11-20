@@ -527,11 +527,13 @@ Returns the listener."
      (fn [] (.setVisible frame true)))))
 
 
-(create-window)
+;(create-window)
 
 ;(JOptionPane/showMessageDialog nil "Hello World")
 
 ;http://stackoverflow.com/questions/1558852/learning-resources-and-tutorials-for-using-the-java-batik-library
+
+
 
 
 
