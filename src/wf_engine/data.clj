@@ -26,8 +26,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn data-get-nodes [protocol]
-  "Returns a list of IDs (keywords) found in an execution protocol."
-
   (if (execution-block-primative? protocol)
 
     (list     (DataNode. (.ID (.Contents protocol))
@@ -35,47 +33,61 @@
 
     ;otherwise is an operator
     (reduce concat
-            (cons (list (DataNode. (.ID (.Contents protocol))
-                                   (.Title (.Contents protocol))))
+            (cons (cond (execution-block-fold? protocol)
+                          (list (DataNode. (.ID (.Contents protocol))
+                                           (.Title (.Contents protocol))))
 
-             (map data-get-nodes (.Blocks (.Contents protocol)))))))
+                        (execution-block-mapclone? protocol)
+                          (list (DataNode. (.ID (.Contents protocol))
+                                           (.Title (.Contents protocol)))
+                                (DataNode. (keyword (str (name (.ID (.Contents protocol))) "-join"))
+                                           "Join"))
+                        :else
+                          (throw (Exception. "data-get-nodes: Don't know how to build nodes for operator found.")))
 
-(defn data-get-edges [protocol]
-  "Returns a list of ID (keywords) pairs (vectors) that represent connectivity in an execution protocol.
-  Recursively, this is the outgoing edges of a protocol combined with the outgoing edges of each nodes it
-  is connected to."
+            (map data-get-nodes (.Blocks (.Contents protocol)))))))
+
+(defn data-get-edges-helper [protocol]
 
   (if (execution-block-primative? protocol)
 
-    ;blocks can't have out going edges
-    (list)
+    ;blocks can't have edges
+    (list (list) (.ID (.Contents protocol)))
 
     ;otherwise is an operator
     (reduce concat
             (cons
                ;produce local edges
                  (cond ;fold - have to  label edges by order
-                       (execution-block-fold? protocol)
-                       (first (reduce (fn [state active-protocol]
-                                          (let [edge (vector (.ID (.Contents protocol))
-                                                             (.ID (.Contents active-protocol))
-                                                             (str (second state)))]
-                                            (list (conj (first state) edge)
-                                                  (inc (second state)))))
-                                      (list (list) 0)
-                                      (.Blocks (.Contents protocol))))
+                     (execution-block-fold? protocol)
+
+
+                       (list)
+
 
                      ;map clone - don't need to label edges
                      (execution-block-mapclone? protocol)
-                       (list)
-                       ;(map #(vector (.ID (.Contents protocol)) (.ID (.Contents %)) "")
-                       ;     (.Blocks (.Contents protocol)))
+
+
+                                     (first (reduce (fn [state active-protocol]
+                                                    (let [edge (vector (.ID (.Contents protocol))
+                                                                       (.ID (.Contents active-protocol))
+                                                                       "")]
+                                                      (list (conj (first state) edge)
+                                                            (inc (second state)))))
+                                      (list (list) 0)
+                                      (.Blocks (.Contents protocol))))
 
                      :else
                        (throw (Exception. "execution-list-edges: Don't know how to build edges for operator found.")))
 
                ;recursive step
-               (map data-get-edges (.Blocks (.Contents protocol)))))))
+               (map data-get-edges-helper (.Blocks (.Contents protocol)))))))
+
+(defn data-get-edges [protocol]
+  (first (data-get-edges-helper protocol)))
+
+
 
 ;;; CONSTRUCTORS
 (defn data-make-from-execution-protocol [execution-protocol]
@@ -87,7 +99,24 @@
                                                  (data-get-edges execution-protocol))))
 
 
-(data-make-from-execution-protocol (build-sprouts-execution))
+;(data-make-from-execution-protocol (build-sprouts-execution))
+
+(defn tmp []
+  (data-make-from-execution-protocol
+   (execution-make-protocol-mapclone :mapclone-1
+                                     "MapClone"
+                                     [(execution-make-protocol-primative :id-fetchfasta
+                                                                         "Fetch FASTA"
+                                                                         (schema-make {"pdb_id" :string})
+                                                                         (schema-make {"fasta_filepath" :string}))
+                                      (execution-make-protocol-primative :id-fetchpdb
+                                                                         "Fetch PDB"
+                                                                         (schema-make {"pdb_id" :string})
+                                                                         (schema-make {"pdb_filepath" :string}))
+                                      ])))
+
+(.Nodes (.Contents (tmp)))
+(.Edges (.Contents (tmp)))
 
 
 

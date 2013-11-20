@@ -168,7 +168,8 @@
   (-> (graph :width 800 :height 600)
       (add-nodes (execution-list-ids protocol) protocol)
       (add-edges (execution-list-edges protocol) protocol)
-      (layout :hierarchical)
+      ;(layout :hierarchical)
+      (layout :radial :radius 90)
       (build)))
 
 ;;; testing
@@ -526,7 +527,7 @@ Returns the listener."
      (fn [] (.setVisible frame true)))))
 
 
-;(create-window)
+(create-window)
 
 ;(JOptionPane/showMessageDialog nil "Hello World")
 
