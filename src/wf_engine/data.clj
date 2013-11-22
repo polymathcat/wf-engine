@@ -8,9 +8,6 @@
        wf-engine.database
        wf-engine.execution))
 
-
-;edges have the form {keyword:start, keyword:end string:title}
-
 (defrecord DataPrimative [Nodes
                           Edges])
 
@@ -62,17 +59,24 @@
           recursive-edges    (reduce concat (list) (map #(first %) recursive-solution))
           recursive-tails    (map #(second %) recursive-solution)
 
-          local-edges  (cond ;fold - have to  label edges by order
-                         ;(execution-block-fold? protocol)
-                         ; (list)
+          local-edges  (cond (execution-block-fold? protocol)
 
+                             (let [fold-to-first (list (DataEdge. (.ID (.Contents protocol))
+                                                                  (.ID (.Contents (first (.Blocks (.Contents protocol)))))
+                                                                  ""))
+                                   ids (map #(.ID (.Contents %)) (.Blocks (.Contents protocol)))
+                                   id-pairs (map vector ids (rest ids))
+                                   inner-edges (map #(DataEdge. (first %) (second %) "")
+                                                    id-pairs)]
 
-                         ;map clone - don't need to label edges
+                                (concat fold-to-first
+                                        inner-edges))
+
                          (execution-block-mapclone? protocol)
                           (let [mapclone-to-child-edges (first (reduce (fn [state active-protocol]
                                                                            (let [edge (DataEdge. (.ID (.Contents protocol))
-                                                                                               (.ID (.Contents active-protocol))
-                                                                                               "")]
+                                                                                                 (.ID (.Contents active-protocol))
+                                                                                                 "")]
                                                                                 (list (conj (first state) edge)
                                                                                       (inc (second state)))))
                                                                        (list (list) 0)
@@ -91,11 +95,18 @@
                                         tails-to-mapclone-edges))
 
                          :else
-                           (throw (Exception. "execution-list-edges: Don't know how to build edges for operator found.")))]
+                           (throw (Exception. "execution-list-edges: Don't know how to build edges for operator found.")))
+
+          local-tail (cond (execution-block-fold? protocol)
+                             (.ID (.Contents protocol))
+                           (execution-block-mapclone? protocol)
+                             (keyword (str (name (.ID (.Contents protocol))) "-join"))
+                           :else
+                             (throw (Exception. "execution-list-edges: Don't know how to determine tail for operator found.")))]
 
 
                   (list (concat local-edges recursive-edges)
-                        (.ID (.Contents protocol))))))
+                        local-tail))))
 
 (defn data-get-edges [protocol]
   (first (data-get-edges-helper protocol)))
@@ -110,7 +121,7 @@
                                  (data-get-edges execution-protocol))))
 
 
-;(data-make-from-execution-protocol (build-sprouts-execution))
+;;; TESTING
 
 (defn tmp []
   (data-make-from-execution-protocol
@@ -133,12 +144,31 @@
                                                                          (schema-make {"pdb_filepath" :string}))
                                       ])))
 
-(.Nodes (.Contents (tmp2)))
-(.Edges (.Contents (tmp2)))
+
+(defn tmp3 []
+(data-make-from-execution-protocol
+(execution-make-protocol-fold :fold-1
+                                "Fold"
+                                [(execution-make-protocol-primative :job-parser
+                                                                    "Job Parser"
+                                                                    (schema-make {"job_filepath" :string})
+                                                                    (schema-make {"pdb_id" :string}))
+                                 (execution-make-protocol-primative :id-fetchentryider
+                                                                                     "Entry IDer"
+                                                                                     (schema-make {"pdb_id" :string})
+                                                                                     (schema-make {"protein_id" :string, "fasta_filepath" :string, "pdb_filepath" :string, "dssp_filepath" :string}))
+ ])))
+
+
+
+(.Nodes (.Contents (tmp3)))
+(.Edges (.Contents (tmp3)))
 
 
 
 
+
+;(data-make-from-execution-protocol (tmp3))
 
 
 
