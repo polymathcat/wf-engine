@@ -1,6 +1,8 @@
 ;;; Copyright ©2013 Ruben Acuna
 
-;;; namespace and externals
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; NAMESPACES
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (ns wf-engine.visualization
   (:gen-class)
@@ -21,6 +23,7 @@
            (java.awt BorderLayout Color)
            java.awt.Component))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; GLOBALS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -34,7 +37,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; EXECUTION GRAPH GENERATION
+;;; EXECUTION GRAPH GENERATION (modified from lacij examples)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;modified from lacij examples
@@ -69,7 +72,7 @@
           g
           nodes))
 
-;modified from lacij examples
+
 (defn vizexec-graph-add-edges [g edges protocol]
   (reduce (fn [g [src dst label]]
             (let [id (keyword (str (name src) "-" (name dst)))]
@@ -77,32 +80,59 @@
           g
           edges))
 
+
 (defn vizexec-graph-build [protocol]
   (-> (graph :width 800 :height 600)
       (vizexec-graph-add-nodes (execution-get-ids protocol) protocol)
       (vizexec-graph-add-edges (execution-get-edges protocol) protocol)
-      ;(layout :hierarchical)
       (layout :radial :radius 90)
       (build)))
 
-;;; testing
-(defn gen-graph []
-  (-> (graph)
-      (add-node :athena "Athena" :x 10 :y 30)
-      (add-node :zeus "Zeus" :x 200 :y 150)
-      (add-node :hera "Hera" :x 500 :y 150)
-      (add-node :ares "Ares" :x 350 :y 250)
-      (add-node :matrimony "<3" :x 400 :y 170 :shape :circle)
-      (add-edge :father1 :athena :zeus)
-      (add-edge :zeus-matrimony :zeus :matrimony)
-      (add-edge :hera-matrimony :hera :matrimony)
-      (add-edge :son-zeus-hera :ares :matrimony)
-      (build)))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; DATA GRAPH EXTRACTION
+;;; DATA GRAPH EXTRACTION (modified from lacij examples)
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn vizdata-graph-add-nodes [g nodes]
+  (reduce (fn [g node]
+                (add-node g
+                          (.ID node)
+
+                          ;node display string
+                          (.Title node)
+
+                          ;node display shape
+                          :shape :square
+
+                          :style {:fill "#FFF5A2"}
+
+                          ;node width and height
+                          :width 30
+                          :height 30))
+          g
+          nodes))
+
+
+(defn vizdata-graph-add-edges [g edges]
+  (reduce (fn [g edge]
+            (let [id (keyword (str (name (.ID-Start edge)) "-" (name (.ID-End edge) )))]
+             (add-edge g
+                       id
+                       (.ID-Start edge)
+                       (.ID-End edge)
+                       (.Title edge))))
+          g
+          edges))
+
+
+(defn vizdata-graph-build [protocol]
+  (let [flowgraph (data-make-flowgraph protocol)]
+    (-> (graph :width 800 :height 600)
+        (vizdata-graph-add-nodes (.Nodes flowgraph))
+        (vizdata-graph-add-edges (.Edges flowgraph))
+        (layout :hierarchical)
+
+        (build))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -125,7 +155,7 @@ Returns the listener."
 ;;; EXECUTION GUI STATE UPDATE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn gui-populate-block-info []
+(defn vizexec-gui-update-block-info []
   (if (nil? (deref *execution-active-id*))
 
     ;node not selected, clear
@@ -163,7 +193,7 @@ Returns the listener."
         in    (execution-get-schema-input (execution-get-by-id (deref *execution-protocol*) id))
         out   (execution-get-schema-output (execution-get-by-id (deref *execution-protocol*) id))]
 
-    (gui-populate-block-info)
+    (vizexec-gui-update-block-info)
 
     ;set defaults for split.
     (.setText (:block1-text-title (deref *frame-components*)) (str title " (1)"))
@@ -215,17 +245,6 @@ Returns the listener."
 
 (defn listener-button-export [event]
   (export (deref *execution-graph*) "graph.svg" :indent "yes"))
-
-
-;;; testing
-(defn on-action [event svgcanvas graph]
-  (do-batik
-   svgcanvas
-   (-> graph
-       (add-node! :appolon "Appolon" :x 50 :y 350)
-       (add-edge! :appolon-athena :appolon :athena)
-
-       )))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -286,7 +305,7 @@ Returns the listener."
     (.setLayout pane nil)
     (.setSize frame (+ 1280 16) (+ 720 38)); offset is for window frames.
     (.setDefaultCloseOperation frame JFrame/EXIT_ON_CLOSE)
-    (add-action-listener button            on-action svgcanvas-other graph-other)
+
     (add-action-listener button-export     listener-button-export)
 
     ;ONTOLOGY PANEL
@@ -416,7 +435,7 @@ Returns the listener."
   (add-action-listener (:button-split-fold (deref *frame-components*)) #(listener-button-split-fold! %))
 
   ;update swing component state
-  (gui-populate-block-info)
+  (vizexec-gui-update-block-info)
 
   nil)
 
@@ -425,7 +444,7 @@ Returns the listener."
   (reset! *execution-protocol* (build-sprouts-execution))
 
   (let [;graph-other    (second sprouts-ontology)
-        graph-other     (gen-graph)
+        graph-other     (vizdata-graph-build (deref *execution-protocol*))
         frame           (create-frame graph-other)
         ]
     (create-and-attach-graph!)
@@ -433,9 +452,13 @@ Returns the listener."
      (fn [] (.setVisible frame true)))))
 
 
-;(create-window)
+(create-window)
 
 ;(JOptionPane/showMessageDialog nil "Hello World")
+
+
+
+
 
 
 

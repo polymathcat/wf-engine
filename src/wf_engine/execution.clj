@@ -304,7 +304,7 @@
                                    "Entry IDer"
                                    (schema-make {"foobar" :string})
                                    (schema-make {"protein_id" :string, "fasta_filepath" :string, "pdb_filepath" :string, "dssp_filepath" :string}))
-      protocol-part (execution-split-protocol-to-fold (get-protocol-by-id protocol-old target-id) block1 block2)
+      protocol-part (execution-split-protocol-to-fold (execution-get-by-id protocol-old target-id) block1 block2)
       protocol-new  (execution-replace-procotol protocol-old target-id protocol-part)]
 
       protocol-new)

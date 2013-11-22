@@ -29,41 +29,47 @@
 ;;; CONSTRUCTORS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(declare data-make-graph)
+(declare data-make-flowgraph)
 
-(defn data-make-graph-primative [protocol]
+(defn data-make-flowgraph-primative [protocol]
   (DataPrimative.  (list (DataNode. (.ID (.Contents protocol))
                                     (.Title (.Contents protocol))))
                    (list)
                    (.ID (.Contents protocol))))
 
-(defn data-make-graph-fold [protocol]
+(defn data-make-flowgraph-fold [protocol]
 
-  (let [recursive-graphs (map data-make-graph (.Blocks (.Contents protocol)))
+  (let [recursive-graphs (map data-make-flowgraph (.Blocks (.Contents protocol)))
         recursive-nodes  (reduce concat (map #(.Nodes %) recursive-graphs))
         recursive-edges  (reduce concat (map #(.Edges %) recursive-graphs))]
 
       (DataPrimative.  (let [local-nodes (list (DataNode. (.ID (.Contents protocol))
-                                                      (.Title (.Contents protocol))))]
+                                                          (.Title (.Contents protocol))))]
                             (concat local-nodes recursive-nodes))
 
                        (let [fold-to-first (list (DataEdge. (.ID (.Contents protocol))
                                                             (.ID (.Contents (first (.Blocks (.Contents protocol)))))
-                                                            ""))
-                             ids (map #(.ID (.Contents %))
-                                      (.Blocks (.Contents protocol)))
-                             id-pairs (map vector ids (rest ids))
-                             inner-edges (map #(DataEdge. (first %) (second %) "")
+                                                            "1"))
+                             ids-head (map #(.ID (.Contents %))
+                                           (.Blocks (.Contents protocol)))
+                             ids-tail (map #(.Tail %)
+                                           recursive-graphs)
+                             id-pairs (map vector ids-tail (rest ids-head))
+                             inner-edges (map #(DataEdge. (first %) (second %) "2")
                                               id-pairs)
                              local-edges (concat fold-to-first inner-edges)]
                          (concat local-edges recursive-edges))
 
 
 
-                       (.ID (.Contents (last (.Blocks (.Contents protocol))))))))
+                       ;(.ID (.Contents (last (.Blocks (.Contents protocol)))))
 
-(defn data-make-graph-mapclone [protocol]
-  (let [recursive-graphs (map data-make-graph (.Blocks (.Contents protocol)))
+                       (.Tail (last recursive-graphs))
+
+                       )))
+
+(defn data-make-flowgraph-mapclone [protocol]
+  (let [recursive-graphs (map data-make-flowgraph (.Blocks (.Contents protocol)))
         recursive-nodes  (reduce concat (map #(.Nodes %) recursive-graphs))
         recursive-edges  (reduce concat (map #(.Edges %) recursive-graphs))
         recursive-tails  (map #(.Tail %) recursive-graphs)
@@ -101,32 +107,32 @@
                    local-tail)))
 
 
-(defn data-make-graph [protocol]
+(defn data-make-flowgraph [protocol]
   (cond (execution-block-primative? protocol)
-          (data-make-graph-primative protocol)
+          (data-make-flowgraph-primative protocol)
 
         (execution-block-fold? protocol)
-          (data-make-graph-fold protocol)
+          (data-make-flowgraph-fold protocol)
 
         (execution-block-mapclone? protocol)
-          (data-make-graph-mapclone protocol)
+          (data-make-flowgraph-mapclone protocol)
 
         :else
-          (throw (Exception. "data-make-graph: Don't know how to build graph for operator found."))))
+          (throw (Exception. "data-make-flowgraph: Don't know how to build graph for operator found."))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; TESTING
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn test-primative []
-  (data-make-graph
+  (data-make-flowgraph
    (execution-make-protocol-primative :id-fetchfasta
                                       "Fetch FASTA"
                                       (schema-make {"pdb_id" :string})
                                       (schema-make {"fasta_filepath" :string}))))
 
 (defn test-mapclone []
-  (data-make-graph
+  (data-make-flowgraph
    (execution-make-protocol-mapclone :mapclone-1
                                      "MapClone"
                                      [(execution-make-protocol-primative :id-fetchfasta
@@ -141,7 +147,7 @@
 
 
 (defn test-mapfold []
-  (data-make-graph
+  (data-make-flowgraph
     (execution-make-protocol-fold :fold-1
                                 "Fold"
                                 [(execution-make-protocol-primative :job-parser
@@ -156,6 +162,12 @@
 
 
 
+
+;(.Nodes (test-mapclone))
+;(.Edges (test-mapclone))
+;(.Tail (test-mapclone))
+
+(.Edges (data-make-flowgraph (build-sprouts-execution)))
 
 
 
