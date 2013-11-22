@@ -1,6 +1,8 @@
 ;;; Copyright ©2013 Ruben Acuna
 
-;;; namespace and externals
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; NAMESPACES
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (ns wf-engine.execution
   (:gen-class)
@@ -33,11 +35,8 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; PROCEDURES
+;;; ACCESSORS - TYPE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-;;; QUESTIONS
 
 (defn execution-block-primative? [thing]
   (and (instance? Protocol thing)
@@ -64,16 +63,63 @@
       (execution-block-operator? thing)))
 
 
-(defn execution-contains-id? [protocol id]
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; ACCESSORS - STRUCTURE
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  (or (and (execution-block-primative? protocol)
-           (= (.ID (.Contents protocol)) id))
+(defn execution-get-edges [protocol]
+  "Returns a list of ID (keywords) pairs (vectors) that represent connectivity in an execution protocol.
+  Recursively, this is the outgoing edges of a protocol combined with the outgoing edges of each nodes it
+  is connected to."
 
-      (and (execution-block-operator? protocol)
-           (some #(execution-contains-id? % id) (.Blocks (.Contents protocol))))))
+  (if (execution-block-primative? protocol)
 
-;;; ACCESSORS
-(defn get-protocol-by-id [protocol id]
+    ;blocks can't have out going edges
+    (list)
+
+    ;otherwise is an operator
+    (reduce concat
+            (cons
+               ;produce local edges
+                 (cond ;fold - have to  label edges by order
+                       (execution-block-fold? protocol)
+                       (first (reduce (fn [state active-protocol]
+                                          (let [edge (vector (.ID (.Contents protocol))
+                                                             (.ID (.Contents active-protocol))
+                                                             (str (second state)))]
+                                            (list (conj (first state) edge)
+                                                  (inc (second state)))))
+                                      (list (list) 0)
+                                      (.Blocks (.Contents protocol))))
+
+                     ;map clone - don't need to label edges
+                     (execution-block-mapclone? protocol)
+                       (map #(vector (.ID (.Contents protocol)) (.ID (.Contents %)) "")
+                            (.Blocks (.Contents protocol)))
+
+                     :else
+                       (throw (Exception. "execution-get-edges: Don't know how to build edges for operator found.")))
+
+               ;recursive step
+               (map execution-get-edges (.Blocks (.Contents protocol)))))))
+
+(defn execution-get-ids [protocol]
+  "Returns a list of IDs (keywords) found in an execution protocol."
+
+  (if (execution-block-primative? protocol)
+    (list (.ID (.Contents protocol)))
+
+    ;otherwise is an operator
+    (reduce concat
+            (cons (list (.ID (.Contents protocol)))
+             (map execution-get-ids (.Blocks (.Contents protocol)))))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; ACCESSORS - COMPONENTS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn execution-get-by-id [protocol id]
   "Searches a protocol and returns the sub-protocol with the required ID."
 
   (if (and (execution-protocol? protocol)
@@ -83,10 +129,15 @@
             nil
             ;otherwise is an operator
             (first (filter #(not (nil? %))
-                           (map #(get-protocol-by-id % id) (.Blocks (.Contents protocol))))))))
+                           (map #(execution-get-by-id % id) (.Blocks (.Contents protocol))))))))
+
+(defn execution-contains-id? [protocol id]
+  (not (nil? (execution-get-by-id protocol id))))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; INTERROGATION
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn execution-get-schema-input [protocol]
   (cond (execution-block-primative? protocol)
@@ -117,7 +168,10 @@
         :else
           (str "unknown block type")))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; CONSTRUCTORS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn execution-make-protocol-primative [id title schema-input schema-output]
   ;will always produce a sound protocol
 
@@ -159,7 +213,10 @@
                                  title
                                  blocks)))
 
-;top down - split based
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; REFINEMENT
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn execution-split-protocol-to-fold [protocol block1 block2]
 
   (cond (not (schema-subset? (execution-get-schema-input block1)
@@ -175,21 +232,10 @@
           (throw (Exception. "split-protocol-to-fold: Block2 doesn't produce data sufficient to take the original protocol's place."))
 
         :else
-          (execution-make-protocol-fold (.ID (.Contents protocol)) (.Title (.Contents protocol)) [block1 block2])
-   )
+          (execution-make-protocol-fold (.ID (.Contents protocol)) (.Title (.Contents protocol)) [block1 block2])))
 
-  (if (and (schema-subset? (execution-get-schema-input block1)
-                           (execution-get-schema-input protocol))
-           (schema-subset? (execution-get-schema-input block2)
-                           (execution-get-schema-output block1))
-           (schema-subset? (execution-get-schema-output protocol)
-                           (execution-get-schema-output block2)))
-
-      (execution-make-protocol-fold (.ID (.Contents protocol)) (.Title (.Contents protocol)) [block1 block2])
-      (throw (Exception. "Cannot split block into fold operator from given blocks."))))
 
 (defn execution-replace-procotol [protocol id replacement]
-
   (cond (execution-block-primative? protocol)
           (if (= (.ID (.Contents protocol)) id)
               replacement
@@ -214,7 +260,9 @@
           (throw (Exception. "execution-replace-procotol: encountered unknown protocol."))))
 
 
-;;; testing
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; TESTING
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn build-sprouts-execution []
   (execution-make-protocol-fold :fold-1
                                 "Fold"
@@ -245,8 +293,6 @@
  ]))
 
 ;(execution-get-schema-output (build-sprouts-execution))
-;(defn execution-replace-procotol [protocol id replacement]
-;(defn execution-split-protocol-to-fold [protocol block1 block2]
 
 (let [protocol-old  (build-sprouts-execution)
       target-id     :id-fetchentryider
@@ -262,6 +308,8 @@
       protocol-new  (execution-replace-procotol protocol-old target-id protocol-part)]
 
       protocol-new)
+
+
 
 
 

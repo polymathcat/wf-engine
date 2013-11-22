@@ -21,113 +21,26 @@
            (java.awt BorderLayout Color)
            java.awt.Component))
 
-(def sprouts-ontology (vector :ontology (-> (graph :x 100 :width 1000 :height 1000)
-            (add-node :protein "Protein" :x 7 :y 7)
-            (add-node :secondary-structure "Secondary Structure" :x 250 :y 31)
-            (add-node :interaction-prediction "Interaction Prediction" :x 55 :y 94)
-            (add-node :structure "Structure" :x 415 :y 134)
-            (add-node :residue "Residue" :x 32 :y 204)
-            (add-node :neighbor-distance "Neighbor Distance" :x 212 :y 204)
-            (add-node :fragment-prediction "Fragment Prediction" :x 529 :y 215)
-            (add-node :sequence "Sequence" :x -135 :y 280)
-            (add-node :most-interacting-residue "Most Interacting Residue" :x 101 :y 308)
-            (add-node :stability "Stability" :x 301 :y 308) ;:x :y
-            (add-node :delta-g "Delta G" :x 301 :y 378)
-            (add-node :tighened-end-fragment "Tighened End Fragment" :x 402 :y 395)
-            (add-node :mutant "Mutant" :x 88 :y 414)
-            (add-node :mutation "Mutation" :x 190 :y 412)
-            (add-node :wildtype "Wildtype" :x 90 :y 459)
-            (add-node :delta-delta-g-prediction "Delta Delta G Prediction" :x 248 :y 473)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; GLOBALS
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-            (add-edge :has-a1 :protein :structure "has a")
-            (add-edge :has-a2 :protein :sequence "has a")
-            (add-edge :uses1 :interaction-prediction :sequence "uses")
-            (add-edge :predicts1 :interaction-prediction :neighbor-distance "predicts")
-            (add-edge :attribute1 :structure :secondary-structure "attribute")
-            (add-edge :defines1 :structure :neighbor-distance "defines")
-            (add-edge :defines1 :structure :neighbor-distance "defines")
-            (add-edge :defines2 :structure :stability "defines")
-            (add-edge :has-many1 :structure :tighened-end-fragment "has many")
-            (add-edge :pair-of :neighbor-distance :residue "pair of ")
-            (add-edge :defines3 :neighbor-distance :most-interacting-residue "defines")
-            (add-edge :uses2 :fragment-prediction :structure "uses")
-            (add-edge :predicts2 :fragment-prediction :tighened-end-fragment "predicts")
-            (add-edge :has-a3 :sequence :wildtype "has a")
-            (add-edge :has-many2 :sequence :mutant "has many")
-            (add-edge :requires-proper :stability :most-interacting-residue "requires proper")
-            (add-edge :affects1 :delta-g :stability "affects")
-            (add-edge :has-a4 :mutant :mutation "has a")
-            (add-edge :changes1 :mutation :delta-g "changes")
-            (add-edge :uses3 :delta-delta-g-prediction :wildtype "uses")
-            (add-edge :uses4 :delta-delta-g-prediction :mutant "uses")
-            (add-edge :predicts-change :delta-delta-g-prediction :delta-g "predicts change")
-
-            ;(layout :radial :radius 90)
-            ;(layout :hierarchical)
-            ;(layout :naive)
-            (build))))
+(def ^{:dynamic true} *execution-protocol* (atom nil))
+(def ^{:dynamic true} *execution-graph* (atom nil))
+(def ^{:dynamic true} *execution-svgcanvas* (atom nil))
+(def ^{:dynamic true} *frame-components* (atom nil))
+(def ^{:dynamic true} *container-svgcanvas* (atom nil))
+(def ^{:dynamic true} *execution-active-id* (atom nil))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; EXECUTION GRAPH EXTRACTION
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn execution-list-ids [protocol]
-  "Returns a list of IDs (keywords) found in an execution protocol."
-
-  (if (execution-block-primative? protocol)
-    (list (.ID (.Contents protocol)))
-
-    ;otherwise is an operator
-    (reduce concat
-            (cons (list (.ID (.Contents protocol)))
-             (map execution-list-ids (.Blocks (.Contents protocol)))))))
-
-(defn execution-list-edges [protocol]
-  "Returns a list of ID (keywords) pairs (vectors) that represent connectivity in an execution protocol.
-  Recursively, this is the outgoing edges of a protocol combined with the outgoing edges of each nodes it
-  is connected to."
-
-  (if (execution-block-primative? protocol)
-
-    ;blocks can't have out going edges
-    (list)
-
-    ;otherwise is an operator
-    (reduce concat
-            (cons
-               ;produce local edges
-                 (cond ;fold - have to  label edges by order
-                       (execution-block-fold? protocol)
-                       (first (reduce (fn [state active-protocol]
-                                          (let [edge (vector (.ID (.Contents protocol))
-                                                             (.ID (.Contents active-protocol))
-                                                             (str (second state)))]
-                                            (list (conj (first state) edge)
-                                                  (inc (second state)))))
-                                      (list (list) 0)
-                                      (.Blocks (.Contents protocol))))
-
-                     ;map clone - don't need to label edges
-                     (execution-block-mapclone? protocol)
-                       (map #(vector (.ID (.Contents protocol)) (.ID (.Contents %)) "")
-                            (.Blocks (.Contents protocol)))
-
-                     :else
-                       (throw (Exception. "execution-list-edges: Don't know how to build edges for operator found.")))
-
-               ;recursive step
-               (map execution-list-edges (.Blocks (.Contents protocol)))))))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; LACIJ GRAPH GENERATION
+;;; EXECUTION GRAPH GENERATION
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;modified from lacij examples
-(defn add-nodes [g nodes protocol]
+(defn vizexec-graph-add-nodes [g nodes protocol]
   (reduce (fn [g node]
-              (let [active-protocol (get-protocol-by-id protocol node)]
+              (let [active-protocol (execution-get-by-id protocol node)]
                 (add-node g
                           node
 
@@ -157,17 +70,17 @@
           nodes))
 
 ;modified from lacij examples
-(defn add-edges [g edges protocol]
+(defn vizexec-graph-add-edges [g edges protocol]
   (reduce (fn [g [src dst label]]
             (let [id (keyword (str (name src) "-" (name dst)))]
              (add-edge g id src dst label)))
           g
           edges))
 
-(defn build-execution-graph [protocol]
+(defn vizexec-graph-build [protocol]
   (-> (graph :width 800 :height 600)
-      (add-nodes (execution-list-ids protocol) protocol)
-      (add-edges (execution-list-edges protocol) protocol)
+      (vizexec-graph-add-nodes (execution-get-ids protocol) protocol)
+      (vizexec-graph-add-edges (execution-get-edges protocol) protocol)
       ;(layout :hierarchical)
       (layout :radial :radius 90)
       (build)))
@@ -188,6 +101,11 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; DATA GRAPH EXTRACTION
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; SWING UTILITY
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -204,19 +122,7 @@ Returns the listener."
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; GLOBALS
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(def ^{:dynamic true} *execution-protocol* (atom nil))
-(def ^{:dynamic true} *execution-graph* (atom nil))
-(def ^{:dynamic true} *execution-svgcanvas* (atom nil))
-(def ^{:dynamic true} *frame-components* (atom nil))
-(def ^{:dynamic true} *container-svgcanvas* (atom nil))
-(def ^{:dynamic true} *execution-active-id* (atom nil))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; GUI STATE UPDATE
+;;; EXECUTION GUI STATE UPDATE
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn gui-populate-block-info []
@@ -233,9 +139,9 @@ Returns the listener."
           components (deref *frame-components*)
 
           id    (deref *execution-active-id*)
-          title (.Title (.Contents (get-protocol-by-id protocol id)))
-          in    (execution-get-schema-input (get-protocol-by-id protocol id))
-          out   (execution-get-schema-output (get-protocol-by-id protocol id))]
+          title (.Title (.Contents (execution-get-by-id protocol id)))
+          in    (execution-get-schema-input (execution-get-by-id protocol id))
+          out   (execution-get-schema-output (execution-get-by-id protocol id))]
 
           (do (.setText (:text-title components) title)
               (.setText (:text-id components) (name id))
@@ -253,9 +159,9 @@ Returns the listener."
   (reset! *execution-active-id* id)
 
   ;update GUI
-  (let [title (.Title (.Contents (get-protocol-by-id (deref *execution-protocol*) id)))
-        in    (execution-get-schema-input (get-protocol-by-id (deref *execution-protocol*) id))
-        out   (execution-get-schema-output (get-protocol-by-id (deref *execution-protocol*) id))]
+  (let [title (.Title (.Contents (execution-get-by-id (deref *execution-protocol*) id)))
+        in    (execution-get-schema-input (execution-get-by-id (deref *execution-protocol*) id))
+        out   (execution-get-schema-output (execution-get-by-id (deref *execution-protocol*) id))]
 
     (gui-populate-block-info)
 
@@ -295,7 +201,7 @@ Returns the listener."
                     target-id      (deref *execution-active-id*)                                                                             ;:id-fetchentryider
                     block1         (execution-make-protocol-primative block1-id block1-title block1-in block1-out)
                     block2         (execution-make-protocol-primative block2-id block2-title block2-in block2-out)
-                    protocol-part  (execution-split-protocol-to-fold (get-protocol-by-id protocol-old target-id) block1 block2)
+                    protocol-part  (execution-split-protocol-to-fold (execution-get-by-id protocol-old target-id) block1 block2)
                     protocol-new   (execution-replace-procotol protocol-old target-id protocol-part)]
 
               (reset! *execution-protocol* protocol-new)
@@ -331,7 +237,7 @@ Returns the listener."
   (reduce (fn [g nodeid]
               (add-listener g nodeid "click" #(node-listener! % nodeid)))
           graph
-          (execution-list-ids protocol)))
+          (execution-get-ids protocol)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -486,7 +392,7 @@ Returns the listener."
 
 (defn create-and-attach-graph! []
 
-  (reset! *execution-graph* (build-execution-graph (deref *execution-protocol*)))
+  (reset! *execution-graph* (vizexec-graph-build (deref *execution-protocol*)))
 
   ;remove any existing svgcanvas
   (if (nil? (deref *execution-svgcanvas*))
@@ -531,7 +437,7 @@ Returns the listener."
 
 ;(JOptionPane/showMessageDialog nil "Hello World")
 
-;http://stackoverflow.com/questions/1558852/learning-resources-and-tutorials-for-using-the-java-batik-library
+
 
 
 
