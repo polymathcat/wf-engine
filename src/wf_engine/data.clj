@@ -8,6 +8,10 @@
        wf-engine.database
        wf-engine.execution))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; DATA STRUCTURES
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defrecord DataPrimative [Nodes   ;list
                           Edges   ;list
                           Tail])  ;keyword
@@ -20,9 +24,10 @@
                      Title])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
+;;; CONSTRUCTORS
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(declare data-make-graph)
 
 (defn data-make-graph-primative [protocol]
   (DataPrimative.  (list (DataNode. (.ID (.Contents protocol))
@@ -31,127 +36,95 @@
                    (.ID (.Contents protocol))))
 
 (defn data-make-graph-fold [protocol]
-  (DataPrimative.  (reduce concat (cons (list (DataNode. (.ID (.Contents protocol))
-                                                         (.Title (.Contents protocol))))
-                                        (map data-get-nodes (.Blocks (.Contents protocol)))))
-                   (let [recursive-solution (map data-get-edges-helper (.Blocks (.Contents protocol)))
-                         recursive-edges    (reduce concat (list) (map #(first %) recursive-solution))
-                         recursive-tails    (map #(second %) recursive-solution)
 
-                         local-edges  (let [fold-to-first (list (DataEdge. (.ID (.Contents protocol))
-                                                                           (.ID (.Contents (first (.Blocks (.Contents protocol)))))
-                                                                           ""))
-                                            ids (map #(.ID (.Contents %)) (.Blocks (.Contents protocol)))
-                                            id-pairs (map vector ids (rest ids))
-                                            inner-edges (map #(DataEdge. (first %) (second %) "")
-                                                             id-pairs)]
+  (let [recursive-graphs (map data-make-graph (.Blocks (.Contents protocol)))
+        recursive-nodes  (reduce concat (map #(.Nodes %) recursive-graphs))
+        recursive-edges  (reduce concat (map #(.Edges %) recursive-graphs))]
 
-                                        (concat fold-to-first
-                                                inner-edges))]
+      (DataPrimative.  (let [local-nodes (list (DataNode. (.ID (.Contents protocol))
+                                                      (.Title (.Contents protocol))))]
+                            (concat local-nodes recursive-nodes))
 
+                       (let [fold-to-first (list (DataEdge. (.ID (.Contents protocol))
+                                                            (.ID (.Contents (first (.Blocks (.Contents protocol)))))
+                                                            ""))
+                             ids (map #(.ID (.Contents %))
+                                      (.Blocks (.Contents protocol)))
+                             id-pairs (map vector ids (rest ids))
+                             inner-edges (map #(DataEdge. (first %) (second %) "")
+                                              id-pairs)
+                             local-edges (concat fold-to-first inner-edges)]
                          (concat local-edges recursive-edges))
 
-                   (.ID (.Contents protocol))))
+
+
+                       (.ID (.Contents (last (.Blocks (.Contents protocol))))))))
 
 (defn data-make-graph-mapclone [protocol]
-  (DataPrimative. (reduce concat (cons (list (DataNode. (.ID (.Contents protocol))
-                                                        (.Title (.Contents protocol)))
-                                             (DataNode. (keyword (str (name (.ID (.Contents protocol))) "-join"))
-                                                        "Join"))
+  (let [recursive-graphs (map data-make-graph (.Blocks (.Contents protocol)))
+        recursive-nodes  (reduce concat (map #(.Nodes %) recursive-graphs))
+        recursive-edges  (reduce concat (map #(.Edges %) recursive-graphs))
+        recursive-tails  (map #(.Tail %) recursive-graphs)
+        local-tail       (keyword (str (name (.ID (.Contents protocol))) "-join"))]
 
-                                       (map data-get-nodes (.Blocks (.Contents protocol)))))
+  (DataPrimative. (let [local-nodes (list (DataNode. (.ID (.Contents protocol))
+                                                     (.Title (.Contents protocol)))
+                                          (DataNode. local-tail
+                                                     "Join"))]
+                       (concat local-nodes recursive-nodes))
 
-                  (let [recursive-solution (map data-get-edges-helper (.Blocks (.Contents protocol)))
-                        recursive-edges    (reduce concat (list) (map #(first %) recursive-solution))
-                        recursive-tails    (map #(second %) recursive-solution)
 
-                        local-edges  (let [mapclone-to-child-edges (first (reduce (fn [state active-protocol]
-                                                                                    (let [edge (DataEdge. (.ID (.Contents protocol))
-                                                                                                          (.ID (.Contents active-protocol))
-                                                                                                          "")]
-                                                                                      (list (conj (first state) edge)
-                                                                                            (inc (second state)))))
-                                                                                  (list (list) 0)
-                                                                                  (.Blocks (.Contents protocol))))
+                   (let [mapclone-to-child-edges (first (reduce (fn [state active-protocol]
+                                                                  (let [edge (DataEdge. (.ID (.Contents protocol))
+                                                                                        (.ID (.Contents active-protocol))
+                                                                                        "")]
+                                                                    (list (conj (first state) edge)
+                                                                          (inc (second state)))))
+                                                                (list (list) 0)
+                                                                (.Blocks (.Contents protocol))))
 
-                                           tails-to-mapclone-edges (first (reduce (fn [state active-id]
-                                                                                    (let [edge (DataEdge. active-id
-                                                                                                          (.ID (.Contents protocol))
-                                                                                                          "")]
-                                                                                      (list (conj (first state) edge)
-                                                                                            (inc (second state)))))
-                                                                                  (list (list) 0)
-                                                                                  recursive-tails))]
-
-                                         (concat mapclone-to-child-edges
-                                                 tails-to-mapclone-edges))]
-
+                        tails-to-mapclone-edges (first (reduce (fn [state active-id]
+                                                                  (let [edge (DataEdge. active-id
+                                                                                        local-tail
+                                                                                        "")]
+                                                                    (list (conj (first state) edge)
+                                                                          (inc (second state)))))
+                                                                (list (list) 0)
+                                                                recursive-tails))
+                        local-edges (concat mapclone-to-child-edges
+                                            tails-to-mapclone-edges)]
 
                        (concat local-edges recursive-edges))
-                  (keyword (str (name (.ID (.Contents protocol))) "-join"))))
 
-(defn data-make-graph-mapclone [protocols])
-nil
-)
+                   local-tail)))
 
-(defn data-get-nodes [protocol]
+
+(defn data-make-graph [protocol]
   (cond (execution-block-primative? protocol)
-          (.Nodes (data-make-graph-primative protocol))
+          (data-make-graph-primative protocol)
 
         (execution-block-fold? protocol)
-          (.Nodes (data-make-graph-fold protocol))
+          (data-make-graph-fold protocol)
 
         (execution-block-mapclone? protocol)
-          (.Nodes (data-make-graph-mapclone protocol))
+          (data-make-graph-mapclone protocol)
 
         :else
-          (throw (Exception. "data-get-nodes: Don't know how to build nodes for operator found."))))
-
-(defn data-get-edges-helper [protocol]
-
-  (cond (execution-block-primative? protocol)
-
-          (list (.Edges (data-make-graph-primative protocol))
-                (.Tail (data-make-graph-primative protocol)))
-
-        (execution-block-fold? protocol)
-
-          (list (.Edges (data-make-graph-fold protocol))
-                (.Tail (data-make-graph-fold protocol)))
-
-        (execution-block-mapclone? protocol)
-
-          (list (.Edges (data-make-graph-mapclone protocol))
-                (.Tail (data-make-graph-mapclone protocol)))
-
-        :else
-          (throw (Exception. "data-get-nodes: Don't know how to build edges for operator found."))))
-
-(defn data-get-edges [protocol]
-  (first (data-get-edges-helper protocol)))
+          (throw (Exception. "data-make-graph: Don't know how to build graph for operator found."))))
 
 
-
-;;; CONSTRUCTORS
-(defn data-make-from-execution-protocol [execution-protocol]
-  (make-protocol :data
-                 :graph
-                 (DataPrimative. (data-get-nodes execution-protocol)
-                                 (data-get-edges execution-protocol)
-                                 :tmp)))
-
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; TESTING
-
-(defn tmp []
-  (data-make-from-execution-protocol
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn test-primative []
+  (data-make-graph
    (execution-make-protocol-primative :id-fetchfasta
                                       "Fetch FASTA"
                                       (schema-make {"pdb_id" :string})
                                       (schema-make {"fasta_filepath" :string}))))
 
-(defn tmp2 []
-  (data-make-from-execution-protocol
+(defn test-mapclone []
+  (data-make-graph
    (execution-make-protocol-mapclone :mapclone-1
                                      "MapClone"
                                      [(execution-make-protocol-primative :id-fetchfasta
@@ -165,9 +138,9 @@ nil
                                       ])))
 
 
-(defn tmp3 []
-(data-make-from-execution-protocol
-(execution-make-protocol-fold :fold-1
+(defn test-mapfold []
+  (data-make-graph
+    (execution-make-protocol-fold :fold-1
                                 "Fold"
                                 [(execution-make-protocol-primative :job-parser
                                                                     "Job Parser"
@@ -176,19 +149,12 @@ nil
                                  (execution-make-protocol-primative :id-fetchentryider
                                                                                      "Entry IDer"
                                                                                      (schema-make {"pdb_id" :string})
-                                                                                     (schema-make {"protein_id" :string, "fasta_filepath" :string, "pdb_filepath" :string, "dssp_filepath" :string}))
- ])))
-
-
-
-(.Nodes (.Contents (tmp3)))
-(.Edges (.Contents (tmp3)))
+                                                                                     (schema-make {"protein_id" :string, "fasta_filepath" :string, "pdb_filepath" :string, "dssp_filepath" :string}))])))
 
 
 
 
 
-;(data-make-from-execution-protocol (tmp3))
 
 
 
