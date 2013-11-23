@@ -81,11 +81,13 @@
           edges))
 
 
-(defn vizexec-graph-build [protocol]
-  (-> (graph :width 800 :height 600)
+(defn vizexec-graph-build [protocol width height]
+  (-> (graph :width width :height height)
       (vizexec-graph-add-nodes (execution-get-ids protocol) protocol)
       (vizexec-graph-add-edges (execution-get-edges protocol) protocol)
-      (layout :radial :radius 90)
+      (layout :radial :radius 90
+                      :root (.ID (.Contents protocol))
+              )
       (build)))
 
 
@@ -107,7 +109,7 @@
                           :style {:fill "#FFF5A2"}
 
                           ;node width and height
-                          :width 30
+                          :width 60
                           :height 30))
           g
           nodes))
@@ -125,12 +127,13 @@
           edges))
 
 
-(defn vizdata-graph-build [protocol]
+(defn vizdata-graph-build [protocol width height]
   (let [flowgraph (data-make-flowgraph protocol)]
-    (-> (graph :width 800 :height 600)
+    (-> (graph :width width :height height)
         (vizdata-graph-add-nodes (.Nodes flowgraph))
         (vizdata-graph-add-edges (.Edges flowgraph))
-        (layout :hierarchical)
+        (layout :hierarchical
+                :layer-space 75)
 
         (build))))
 
@@ -263,14 +266,12 @@ Returns the listener."
 ;;; VISUALIZATION SET UP
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn create-frame [graph-other]
+(defn create-frame-execution [graph-other]
   (let [frame                (JFrame.)
         svgcanvas-other      (:svgcanvas graph-other)
 
-        panel-ontology       (JPanel.)
         panel-protocol       (JPanel.)
 
-        button               (JButton. "Unimplemented")
         button-export        (JButton. "Save Image")
 
         label-title (JLabel. "Title:")
@@ -308,58 +309,49 @@ Returns the listener."
 
     (add-action-listener button-export     listener-button-export)
 
-    ;ONTOLOGY PANEL
-    (.setLocation panel-ontology 0 0)
-    (.setSize panel-ontology 640 720)
-    (.setLayout panel-ontology nil)
-
-    (.add panel-ontology svgcanvas-other)
+    (.add pane svgcanvas-other)
      (.setSize svgcanvas-other 640 600)
      (.setLocation svgcanvas-other 0 0)
-
-    (.add panel-ontology button)
-      (.setSize button 100 20)
-      (.setLocation button 100 650)
-
-    (.add pane panel-ontology)
 
     ;PROTOCOL PANEL
     (.setLocation panel-protocol 640 0)
     (.setSize panel-protocol 640 720)
     (.setLayout panel-protocol nil)
 
-    ;bottom
-    (.add panel-protocol label-title)
-      (.setSize label-title 100 20)
-      (.setLocation label-title 0 610)
-    (.add panel-protocol (:text-title components))
-      (.setSize (:text-title components) 100 20)
-      (.setLocation (:text-title components) 50 610)
-      (.setEditable (:text-title components) false)
+    ;block info
+    (let [x-shift 0
+          y-shift 610]
+      (.add pane label-title)
+        (.setSize label-title 100 20)
+        (.setLocation label-title (+ 0 x-shift) (+ 0 y-shift))
+      (.add pane (:text-title components))
+        (.setSize (:text-title components) 100 20)
+        (.setLocation (:text-title components) (+ 50 x-shift) (+ 0 y-shift))
+        (.setEditable (:text-title components) false)
 
-     (.add panel-protocol label-id)
-      (.setSize label-id 100 20)
-      (.setLocation label-id 0 635)
-     (.add panel-protocol (:text-id components))
-      (.setSize (:text-id components) 100 20)
-      (.setLocation (:text-id components) 50 635)
-      (.setEditable (:text-id components) false)
+       (.add pane label-id)
+        (.setSize label-id 100 20)
+        (.setLocation label-id (+ 0 x-shift) (+ 25 y-shift))
+       (.add pane (:text-id components))
+        (.setSize (:text-id components) 100 20)
+        (.setLocation (:text-id components) (+ 50 x-shift) (+ 25 y-shift))
+        (.setEditable (:text-id components) false)
 
-     (.add panel-protocol label-in)
-      (.setSize label-in 200 20)
-      (.setLocation label-in 0 660)
-     (.add panel-protocol (:textarea-in components))
-      (.setSize (:textarea-in components) 150 20)
-      (.setLocation (:textarea-in components) 50 660)
-      (.setEditable (:textarea-in components) false)
+       (.add pane label-in)
+        (.setSize label-in 200 20)
+        (.setLocation label-in (+ 0 x-shift) (+ 50 y-shift))
+       (.add panel-protocol (:textarea-in components))
+        (.setSize (:textarea-in components) 150 20)
+        (.setLocation (:textarea-in components) (+ 50 x-shift) (+ 50 y-shift))
+        (.setEditable (:textarea-in components) false)
 
-     (.add panel-protocol label-out)
-      (.setSize label-out 200 20)
-      (.setLocation label-out 0 690)
-     (.add panel-protocol (:textarea-out components))
-      (.setSize (:textarea-out components) 150 20)
-      (.setLocation (:textarea-out components) 50 690)
-      (.setEditable (:textarea-out components) false)
+       (.add pane label-out)
+        (.setSize label-out 200 20)
+        (.setLocation label-out (+ 0 x-shift) (+ 75 y-shift))
+       (.add pane (:textarea-out components))
+        (.setSize (:textarea-out components) 150 20)
+        (.setLocation (:textarea-out components) (+ 50 x-shift) (+ 75 y-shift))
+        (.setEditable (:textarea-out components) false))
 
     ;block1
     (let [x-shift 200]
@@ -409,9 +401,11 @@ Returns the listener."
 
     frame))
 
+
 (defn create-and-attach-graph! []
 
-  (reset! *execution-graph* (vizexec-graph-build (deref *execution-protocol*)))
+  (reset! *execution-graph* (vizexec-graph-build (deref *execution-protocol*)
+                                                 640 600))
 
   ;remove any existing svgcanvas
   (if (nil? (deref *execution-svgcanvas*))
@@ -439,14 +433,14 @@ Returns the listener."
 
   nil)
 
+
 (defn create-window []
 
   (reset! *execution-protocol* (build-sprouts-execution))
 
   (let [;graph-other    (second sprouts-ontology)
-        graph-other     (vizdata-graph-build (deref *execution-protocol*))
-        frame           (create-frame graph-other)
-        ]
+        graph-other     (vizdata-graph-build (deref *execution-protocol*) 640 600)
+        frame           (create-frame-execution graph-other)]
     (create-and-attach-graph!)
     (SwingUtilities/invokeAndWait
      (fn [] (.setVisible frame true)))))
@@ -455,6 +449,8 @@ Returns the listener."
 (create-window)
 
 ;(JOptionPane/showMessageDialog nil "Hello World")
+
+
 
 
 
