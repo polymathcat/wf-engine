@@ -12,11 +12,11 @@
     <orderEntry type="jdk" jdkName="1.8" jdkType="JavaSDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="Leiningen: clojure-complete:0.2.3" level="project" />
-    <orderEntry type="library" name="Leiningen: lacij:0.8.2" level="project" />
+    <orderEntry type="library" name="Leiningen: lacij:0.9.0" level="project" />
     <orderEntry type="library" name="Leiningen: org.clojars.pallix/analemma:1.0.0" level="project" />
     <orderEntry type="library" name="Leiningen: org.clojure/clojure:1.5.1" level="project" />
     <orderEntry type="library" name="Leiningen: org.clojure/tools.nrepl:0.2.3" level="project" />
-    <orderEntry type="library" name="Leiningen: tikkba:0.4.1" level="project" />
+    <orderEntry type="library" name="Leiningen: tikkba:0.5.0" level="project" />
     <orderEntry type="library" name="Leiningen: org.clojars.pallix/batik:1.7.0" level="project" />
     <orderEntry type="library" name="Leiningen: org.clojars.pallix/xerces:2.5.0" level="project" />
     <orderEntry type="library" name="Leiningen: org.clojars.pallix/xml-apis-ext:2.5.0" level="project" />

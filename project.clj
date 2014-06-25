@@ -5,8 +5,8 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojars.pallix/analemma "1.0.0"]
-                 [tikkba "0.4.1"]
-                 [lacij "0.8.2"]]
+                 [tikkba "0.5.0"]
+                 [lacij "0.9.0"]]
   :main ^:skip-aot wf-engine.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})
