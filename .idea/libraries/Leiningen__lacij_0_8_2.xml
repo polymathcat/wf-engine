@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Leiningen: lacij:0.8.2">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/lacij/lacij/0.8.2/lacij-0.8.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

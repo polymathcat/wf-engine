@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Leiningen: org.clojars.pallix/xml-apis:2.5.0">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/clojars/pallix/xml-apis/2.5.0/xml-apis-2.5.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
